@@ -7,6 +7,7 @@ package rotatelogs
 import (
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -128,19 +129,24 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 
 	fi, err := os.Stat(rl.curFn)
 	sizeRotation := false
+	//是否需要按照大小分割文件：文件存在，且文件大小超过设定阈值
 	if err == nil && rl.rotationSize > 0 && rl.rotationSize <= fi.Size() {
 		forceNewFile = true
 		sizeRotation = true
 	}
-
-	if baseFn != rl.curBaseFn {
+	//判断是不是当天的文件
+	oldTime := rl.ParseTimeFromFileName("%Y%m%d%H%M%S", baseFn)
+	newTime := rl.ParseTimeFromFileName("%Y%m%d%H%M%S", rl.curBaseFn)
+	if baseFn != rl.curBaseFn && rl.IsNextDay(oldTime, newTime) {
 		generation = 0
 		// even though this is the first write after calling New(),
 		// check if a new file needs to be created
+		//每次启动时，是否需要创建新的文件
 		if rl.forceNewFile {
 			forceNewFile = true
 		}
 	} else {
+		//判断是否需要按大小分割
 		if !useGenerationalNames && !sizeRotation {
 			// nothing to do
 			return rl.outFh, nil
@@ -152,20 +158,31 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		// A new file has been requested. Instead of just using the
 		// regular strftime pattern, we create a new file name using
 		// generational names such as "foo.1", "foo.2", "foo.3", etc
-		var name string
-		for {
-			if generation == 0 {
-				name = filename
-			} else {
-				name = fmt.Sprintf("%s.%d", filename, generation)
-			}
-			if _, err := os.Stat(name); err != nil {
-				filename = name
 
+		//按照文件大小分割文件：获取新的文件名
+		var newFileName string
+		for {
+			newFileName = fileutil.GenerateFnForFileSize(rl.pattern, rl.clock)
+			if _, err := os.Stat(newFileName); err != nil {
+				filename = newFileName
 				break
 			}
-			generation++
 		}
+
+		//var name string
+		//for {
+		//	if generation == 0 {
+		//		name = filename
+		//	} else {
+		//		name = fmt.Sprintf("%s.%d", filename, generation)
+		//	}
+		//	if _, err := os.Stat(name); err != nil {
+		//		filename = name
+		//
+		//		break
+		//	}
+		//	generation++
+		//}
 	}
 
 	fh, err := fileutil.CreateFile(filename)
@@ -383,4 +400,54 @@ func (rl *RotateLogs) Close() error {
 	rl.outFh = nil
 
 	return nil
+}
+
+func (rl *RotateLogs) ParseTimeFromFileName(fileNameTimeFormat string, fileName string) time.Time {
+	//正则表达式：获取时间字符串
+	fileNameTime := getTimeFromStr(fileName)
+	//字符串转换为时间
+	fileNameInTime := rl.changeFileNameByTime(fileNameTime)
+	return fileNameInTime
+}
+
+func (rl *RotateLogs) changeFileNameByTime(lastTime string) time.Time {
+	var newFileTime time.Time
+	var err error
+	now := rl.clock.Now()
+	//当前时间区域
+	if now.Location() != time.UTC {
+		newFileTime, err = time.ParseInLocation("%Y%m%d%H%M%S", lastTime, time.Local)
+	} else {
+		newFileTime, err = time.Parse("%Y%m%d%H%M%S", lastTime)
+	}
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return newFileTime
+}
+
+func getTimeFromStr(str string) string {
+	planRegx := regexp.MustCompile("([1-9])([0-9]|[ ]|[-]|[:])+")
+	subs := planRegx.FindStringSubmatch(str)
+	if len(subs) > 0 {
+		return strings.TrimSpace(subs[0])
+	}
+	return ""
+}
+
+func (rl *RotateLogs) IsNextDay(oldTime time.Time, newTime time.Time) bool {
+	oldYear, oldMonth, oldDay := oldTime.Date()
+	newYear, newMonth, newDay := newTime.Date()
+	if newYear > oldYear {
+		return true
+	}
+	if newMonth > oldMonth {
+		return true
+	}
+	if newDay > oldDay {
+		return true
+	}
+	return false
 }

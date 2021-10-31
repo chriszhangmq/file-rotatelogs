@@ -41,6 +41,20 @@ func GenerateFn(pattern *strftime.Strftime, clock interface{ Now() time.Time }, 
 	return pattern.FormatString(base)
 }
 
+//产生新的文件名（用于按大小分割文件）
+func GenerateFnForFileSize(pattern *strftime.Strftime, clock interface{ Now() time.Time }) string {
+	now := clock.Now()
+
+	var base time.Time
+	if now.Location() != time.UTC {
+		base = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), time.UTC)
+		//base = base.Truncate(rotationTime)
+		base = time.Date(base.Year(), base.Month(), base.Day(), base.Hour(), base.Minute(), base.Second(), base.Nanosecond(), base.Location())
+	}
+
+	return pattern.FormatString(base)
+}
+
 // CreateFile creates a new file in the given path, creating parent directories
 // as necessary
 func CreateFile(filename string) (*os.File, error) {
