@@ -416,9 +416,9 @@ func (rl *RotateLogs) changeFileNameByTime(lastTime string) time.Time {
 	now := rl.clock.Now()
 	//当前时间区域
 	if now.Location() != time.UTC {
-		newFileTime, err = time.ParseInLocation("%Y%m%d%H%M%S", lastTime, time.Local)
+		newFileTime, err = time.ParseInLocation("2006-01-02T15-04-05", lastTime, time.Local)
 	} else {
-		newFileTime, err = time.Parse("%Y%m%d%H%M%S", lastTime)
+		newFileTime, err = time.Parse("2006-01-02T15-04-05", lastTime)
 	}
 
 	if err != nil {
@@ -429,7 +429,7 @@ func (rl *RotateLogs) changeFileNameByTime(lastTime string) time.Time {
 }
 
 func getTimeFromStr(str string) string {
-	planRegx := regexp.MustCompile("([1-9])([0-9]|[ ]|[-]|[:])+")
+	planRegx := regexp.MustCompile("([1-9])([0-9]|[ ]|[-]|[:]|[T])+")
 	subs := planRegx.FindStringSubmatch(str)
 	if len(subs) > 0 {
 		return strings.TrimSpace(subs[0])
