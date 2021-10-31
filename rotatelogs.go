@@ -139,7 +139,7 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		sizeRotation = true
 	} else if !sizeRotation {
 		//文件存在：判断当前文件是否为当天的文件
-		currTime := rl.ParseTimeFromFileName("2006-01-02", baseFn)
+		currTime := rl.ParseTimeFromFileName("2006-01-02", rl.curFn)
 		if !rl.isToday(currTime) {
 			forceNewFile = true
 		}
@@ -172,7 +172,8 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 			var index int
 			for {
 				newFileName = fileutil.GenerateFnForFileSize(rl.pattern, rl.clock)
-				newFileName = fmt.Sprintf("%s.%d%s", filename, index, ".log")
+				newFileName = fmt.Sprintf("%s.%d%s", newFileName, index, ".log")
+				//filename = newFileName
 				if _, err := os.Stat(newFileName); err != nil {
 					filename = newFileName
 					break
