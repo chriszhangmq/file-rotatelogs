@@ -139,7 +139,7 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		if !rl.isToday(currTime) {
 			forceNewFile = true
 		}
-		////每次启动程序，新建文件
+		//每次启动程序，新建文件
 		//if rl.forceNewFile{
 		//	forceNewFile = true
 		//}
