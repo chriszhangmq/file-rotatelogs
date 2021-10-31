@@ -173,8 +173,16 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 			for {
 				newFileName = fileutil.GenerateFnForFileSize(rl.pattern, rl.clock)
 				newFileName = fmt.Sprintf("%s.%d%s", newFileName, index, ".log")
+				index++
 				//filename = newFileName
-				if _, err := os.Stat(newFileName); err != nil {
+				fileInfo, err := os.Stat(newFileName)
+				if err != nil {
+					//文件不存在：创建新的文件
+					filename = newFileName
+					break
+				}
+				//文件存在：判断大小
+				if rl.rotationSize > 0 && rl.rotationSize <= fileInfo.Size() {
 					filename = newFileName
 					break
 				}
