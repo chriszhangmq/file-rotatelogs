@@ -129,11 +129,15 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 
 	fi, err := os.Stat(rl.curFn)
 	sizeRotation := false
-	//是否需要按照大小分割文件：文件存在，且文件大小超过设定阈值。err != nil说明当前文件不存在
-	if err == nil && rl.rotationSize > 0 && rl.rotationSize <= fi.Size() {
+	//err != nil说明当前文件不存在
+	if err != nil {
+		//文件不存在
+		forceNewFile = true
+	} else if rl.rotationSize > 0 && rl.rotationSize <= fi.Size() {
+		//是否需要按照大小分割文件：文件存在，且文件大小超过设定阈值。
 		forceNewFile = true
 		sizeRotation = true
-	} else if err == nil {
+	} else if !sizeRotation {
 		//文件存在：判断当前文件是否为当天的文件
 		currTime := rl.ParseTimeFromFileName("2006-01-02", baseFn)
 		if !rl.isToday(currTime) {
@@ -149,7 +153,7 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		// nothing to do
 		return rl.outFh, nil
 	}
-
+	//需要创建新文件
 	if forceNewFile {
 		// A new file has been requested. Instead of just using the
 		// regular strftime pattern, we create a new file name using
