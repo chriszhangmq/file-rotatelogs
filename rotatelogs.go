@@ -129,21 +129,30 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 
 	fi, err := os.Stat(rl.curFn)
 	sizeRotation := false
-	//是否需要按照大小分割文件：文件存在，且文件大小超过设定阈值
+	//是否需要按照大小分割文件：文件存在，且文件大小超过设定阈值。err != nil说明当前文件不存在
 	if err == nil && rl.rotationSize > 0 && rl.rotationSize <= fi.Size() {
 		forceNewFile = true
 		sizeRotation = true
 	}
-	//判断是不是当天的文件
-	oldTime := rl.ParseTimeFromFileName("%Y%m%d%H%M%S", baseFn)
-	newTime := rl.ParseTimeFromFileName("%Y%m%d%H%M%S", rl.curBaseFn)
-	if baseFn != rl.curBaseFn && rl.IsNextDay(oldTime, newTime) {
-		generation = 0
-		// even though this is the first write after calling New(),
-		// check if a new file needs to be created
-		//每次启动时，是否需要创建新的文件
-		if rl.forceNewFile {
+	//
+	if baseFn != rl.curBaseFn {
+		if len(rl.curBaseFn) <= 0 || rl.curBaseFn == "" {
 			forceNewFile = true
+		} else {
+			//判断是不是当天的文件
+			oldTime := rl.ParseTimeFromFileName("2006-01-02T15-04-05", baseFn)
+			newTime := rl.ParseTimeFromFileName("2006-01-02T15-04-05", rl.curBaseFn)
+			if rl.IsNextDay(oldTime, newTime) {
+				forceNewFile = true
+			}
+
+			generation = 0
+			// even though this is the first write after calling New(),
+			// check if a new file needs to be created
+			//每次启动时，是否需要创建新的文件
+			if rl.forceNewFile {
+				forceNewFile = true
+			}
 		}
 	} else {
 		//判断是否需要按大小分割
@@ -405,20 +414,23 @@ func (rl *RotateLogs) Close() error {
 func (rl *RotateLogs) ParseTimeFromFileName(fileNameTimeFormat string, fileName string) time.Time {
 	//正则表达式：获取时间字符串
 	fileNameTime := getTimeFromStr(fileName)
+	if len(fileNameTime) <= 0 || fileNameTime == "" {
+		return time.Time{}
+	}
 	//字符串转换为时间
-	fileNameInTime := rl.changeFileNameByTime(fileNameTime)
+	fileNameInTime := rl.changeFileNameByTime(fileNameTimeFormat, fileNameTime)
 	return fileNameInTime
 }
 
-func (rl *RotateLogs) changeFileNameByTime(lastTime string) time.Time {
+func (rl *RotateLogs) changeFileNameByTime(fileNameTimeFormat string, lastTime string) time.Time {
 	var newFileTime time.Time
 	var err error
 	now := rl.clock.Now()
 	//当前时间区域
 	if now.Location() != time.UTC {
-		newFileTime, err = time.ParseInLocation("2006-01-02T15-04-05", lastTime, time.Local)
+		newFileTime, err = time.ParseInLocation(fileNameTimeFormat, lastTime, time.Local)
 	} else {
-		newFileTime, err = time.Parse("2006-01-02T15-04-05", lastTime)
+		newFileTime, err = time.Parse(fileNameTimeFormat, lastTime)
 	}
 
 	if err != nil {
