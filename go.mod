@@ -11,5 +11,4 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/stretchr/testify v1.3.0
 	github.com/tebeka/strftime v0.1.3 // indirect
-	golang.org/x/review v0.0.0-20200515044942-a2b90d2f6e29 // indirect
 )
