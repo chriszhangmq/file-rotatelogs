@@ -182,7 +182,7 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 					break
 				}
 				//文件存在：判断大小
-				if rl.rotationSize > 0 && rl.rotationSize <= fileInfo.Size() {
+				if rl.rotationSize > 0 && rl.rotationSize > fileInfo.Size() {
 					filename = newFileName
 					break
 				}
