@@ -162,7 +162,7 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		if !sizeRotation {
 			//按照天来分割文件，获取新的文件名
 			var newFileName string
-			newFileName = fileutil.GenerateFnForFileSize(rl.pattern, rl.clock)
+			newFileName = fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
 			if _, err := os.Stat(newFileName); err != nil {
 				filename = newFileName
 			}
@@ -171,7 +171,7 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 			var newFileName string
 			var index int
 			for {
-				newFileName = fileutil.GenerateFnForFileSize(rl.pattern, rl.clock)
+				newFileName = fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
 				newFileName = fmt.Sprintf("%s.%d%s", newFileName, index, ".log")
 				index++
 				//filename = newFileName
