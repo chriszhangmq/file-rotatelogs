@@ -43,7 +43,7 @@ func GenerateFn(pattern *strftime.Strftime, clock interface{ Now() time.Time }, 
 }
 
 //产生新的文件名（用于按大小分割文件）
-func GenerateFileNme(path string, name string, suffix string, clock interface{ Now() time.Time }) string {
+func GenerateFileNme(path string, name string, suffix string, clock interface{ Now() time.Time }, timeFormat string) string {
 	now := clock.Now()
 
 	var base time.Time
@@ -54,8 +54,8 @@ func GenerateFileNme(path string, name string, suffix string, clock interface{ N
 	}
 
 	//拼接文件名
-	year, month, day := base.Date()
-	fileName := fmt.Sprintf("%s%s-%d-%d-%d%s", path, name, year, month, day, suffix)
+	date := fmt.Sprintf("%s", base.Format(timeFormat))
+	fileName := fmt.Sprintf("%s%s-%s%s", path, name, date, suffix)
 	return fileName
 }
 
