@@ -397,22 +397,22 @@ func (rl *RotateLogs) rotateNolock(filename string) error {
 		toUnlink = toUnlink[:len(toUnlink)-int(rl.rotationCount)]
 	}
 
-	if len(toUnlink) <= 0 {
-		return nil
+	if len(toUnlink) > 0 {
+		guard.Enable()
+		//执行删除文件
+		go func() {
+			// unlink files on a separate goroutine
+			for _, path := range toUnlink {
+				os.Remove(path)
+			}
+		}()
 	}
 
-	go func() { //执行压缩
-		compressFunc(compressFiles)
-	}()
-
-	guard.Enable()
-	//执行删除文件
-	go func() {
-		// unlink files on a separate goroutine
-		for _, path := range toUnlink {
-			os.Remove(path)
-		}
-	}()
+	if len(compressFiles) > 0 {
+		go func() { //执行压缩
+			compressFunc(compressFiles)
+		}()
+	}
 
 	return nil
 }
@@ -475,7 +475,13 @@ func getTimeFromStr(str string) string {
 func (rl *RotateLogs) IsNextDay(oldTime time.Time, newTime time.Time) bool {
 	oldYear, oldMonth, oldDay := oldTime.Date()
 	newYear, newMonth, newDay := newTime.Date()
-	if newYear >= oldYear && newMonth >= oldMonth && newDay >= oldDay {
+	if newYear >= oldYear {
+		return true
+	}
+	if newYear >= oldYear && newMonth >= oldMonth {
+		return true
+	}
+	if newYear >= oldYear && newMonth >= oldMonth && newDay > oldDay {
 		return true
 	}
 	return false
