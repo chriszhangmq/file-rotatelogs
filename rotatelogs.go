@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/chriszhangmq/file-rotatelogs/internal/fileutil"
@@ -26,9 +27,10 @@ const FileSuffix = ".log"
 const compressSuffix = ".gz"
 
 var (
-	FilePath string
-	FileName string
-	osStat   = os.Stat
+	FilePath  string
+	FileName  string
+	OsStat    = os.Stat
+	FileIndex int64
 )
 
 func (c clockFn) Now() time.Time {
@@ -185,12 +187,11 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		} else {
 			//按照文件大小分割文件：获取新的文件名
 			var newFileName string
-			var index int
 			for {
 				//newFileName = fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
 				newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
-				newFileName = fmt.Sprintf("%s.%d%s", newFileName, index, ".log")
-				index++
+				newFileName = fmt.Sprintf("%s.%d%s", newFileName, FileIndex, FileSuffix)
+				atomic.AddInt64(&FileIndex, 1)
 				//filename = newFileName
 				fileInfo, err := os.Stat(newFileName)
 				if err != nil {
@@ -376,6 +377,7 @@ func (rl *RotateLogs) rotateNolock(filename string) error {
 		}
 		//按天数判断是否保留
 		if rl.maxAge > 0 && rl.IsNextDay(cutoff, fi.ModTime()) {
+			atomic.StoreInt64(&FileIndex, 0)
 			if fi.Name() != filename {
 				compressFiles = append(compressFiles, fi.Name())
 			}
@@ -517,7 +519,7 @@ func compressLogFile(src, dst string) (err error) {
 	}
 	defer f.Close()
 
-	fi, err := osStat(src)
+	fi, err := OsStat(src)
 	if err != nil {
 		return fmt.Errorf("failed to stat log file: %v", err)
 	}
