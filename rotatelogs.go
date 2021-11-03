@@ -376,11 +376,14 @@ func (rl *RotateLogs) rotateNolock(filename string) error {
 			continue
 		}
 		//按天数判断是否保留
-		if rl.maxAge > 0 && rl.IsNextDay(cutoff, fi.ModTime()) {
+		if rl.maxAge > 0 && rl.IsNextDay(fi.ModTime(), cutoff) {
 			atomic.StoreInt64(&FileIndex, 0)
 			if fi.Name() != filename {
 				compressFiles = append(compressFiles, fi.Name())
 			}
+			continue
+		} else if rl.rotationSize > 0 && fi.Size() >= rl.rotationSize {
+			compressFiles = append(compressFiles, fi.Name())
 			continue
 		}
 
