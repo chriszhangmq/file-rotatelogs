@@ -51,7 +51,7 @@ func GenerateFnForFileSize(pattern *strftime.Strftime, clock interface{ Now() ti
 		//base = base.Truncate(rotationTime)
 		base = time.Date(base.Year(), base.Month(), base.Day(), base.Hour(), base.Minute(), base.Second(), base.Nanosecond(), base.Location())
 	}
-	base.Add(10 * time.Second)
+	base.Add(20 * time.Second)
 	return pattern.FormatString(base)
 }
 
