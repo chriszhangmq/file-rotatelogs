@@ -665,8 +665,6 @@ func (rl *RotateLogs) cronTask(cronTime string) {
 		fmt.Println(err)
 	}
 	cronObj.Start()
-	defer cronObj.Stop()
-	select {}
 }
 
 func (rl *RotateLogs) cronFunc() {
