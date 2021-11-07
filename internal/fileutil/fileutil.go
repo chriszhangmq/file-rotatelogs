@@ -31,11 +31,11 @@ func GenerateFn(pattern *strftime.Strftime, clock interface{ Now() time.Time }, 
 	if now.Location() != time.UTC {
 		base = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), time.UTC)
 		base = base.Add(-rotationTime)
-		//base = base.Truncate(rotationTime)
+		base = base.Truncate(rotationTime)
 		base = time.Date(base.Year(), base.Month(), base.Day(), base.Hour(), base.Minute(), base.Second(), base.Nanosecond(), base.Location())
 	} else {
 		base = base.Add(-rotationTime)
-		//base = now.Truncate(rotationTime)
+		base = now.Truncate(rotationTime)
 	}
 
 	return pattern.FormatString(base)
