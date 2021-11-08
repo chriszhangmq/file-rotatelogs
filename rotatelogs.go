@@ -28,10 +28,12 @@ const CompressSuffix = ".gz"
 const LockSuffix = "_lock"
 const SymlinkSuffix = "_symlink"
 const Space = " "
+const IsNull = ""
 
 var (
-	FilePath string
-	FileName string
+	FilePath          string
+	FileName          string
+	parseCurrFileTime time.Time
 )
 
 func (c clockFn) Now() time.Time {
@@ -142,7 +144,7 @@ func (rl *RotateLogs) Write(p []byte) (n int, err error) {
 func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames bool) (io.Writer, error) {
 	generation := rl.generation
 	previousFn := rl.curFn
-	filename := ""
+	filename := IsNull
 	forceNewFile := false
 	sizeRotation := false
 	fi, err := os.Stat(rl.curFn)
@@ -155,9 +157,9 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		forceNewFile = true
 		sizeRotation = true
 	} else if !sizeRotation && rl.rotationTime > 0 {
-		//文件存在：判断当前文件是否为当天的文件
-		currFileTime := rl.ParseTimeFromFileName("2006-01-02", rl.curFn)
-		if rl.CompareTimeWithDay(rl.clock.Now().Add(-1*rl.rotationTime), currFileTime) {
+		//文件存在：判断当前文件是否需要按天的分割
+		//currFileTime := rl.ParseTimeFromFileName(TimeFormat, rl.curFn)
+		if rl.CompareTimeWithDay(rl.clock.Now().Add(-1*rl.rotationTime), parseCurrFileTime) {
 			forceNewFile = true
 		}
 	}
@@ -169,6 +171,8 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 	if forceNewFile {
 		//按照天、文件大小分割文件：获取新的文件名
 		filename = getNewFileName(rl.rotationSize, rl.clock)
+		//获取当前文件的时间
+		parseCurrFileTime = rl.ParseTimeFromFileName(TimeFormat, rl.curFn)
 	}
 
 	fh, err := fileutil.CreateFile(filename)
@@ -329,12 +333,21 @@ func (rl *RotateLogs) Close() error {
 func (rl *RotateLogs) ParseTimeFromFileName(fileNameTimeFormat string, fileName string) time.Time {
 	//正则表达式：获取时间字符串
 	fileNameTime := getTimeFromStr(fileName)
-	if len(fileNameTime) <= 0 || fileNameTime == "" {
+	if len(fileNameTime) <= 0 || fileNameTime == IsNull {
 		return time.Time{}
 	}
 	//字符串转换为时间
 	fileNameInTime := rl.changeFileNameByTime(fileNameTimeFormat, fileNameTime)
 	return fileNameInTime
+}
+
+func (rl *RotateLogs) ParseTimeStrFromFileName(fileName string) string {
+	//正则表达式：获取时间字符串
+	fileNameTimeStr := getTimeFromStr(fileName)
+	if len(fileNameTimeStr) <= 0 || fileNameTimeStr == IsNull {
+		return IsNull
+	}
+	return fileNameTimeStr
 }
 
 func (rl *RotateLogs) changeFileNameByTime(fileNameTimeFormat string, lastTime string) time.Time {
@@ -376,6 +389,23 @@ func (rl *RotateLogs) isToday(currTime time.Time) bool {
 	currYear, currMonth, currDay := currTime.Date()
 	todayYear, todayMonth, todayDay := rl.clock.Now().Date()
 	if currYear == todayYear && currMonth == todayMonth && currDay == todayDay {
+		return true
+	}
+	return false
+}
+
+func (rl *RotateLogs) isTodayByTimeStr(currTimeStr string) bool {
+	clockStr := rl.clock.Now().Format(TimeFormat)
+	if currTimeStr == clockStr {
+		return true
+	}
+	return false
+}
+
+func (rl *RotateLogs) isRotateByDay(currFileTime time.Time) bool {
+	currFileYear, currFileMonth, currFileDay := currFileTime.Date()
+	rotateYear, rotateMonth, rotateDay := rl.clock.Now().Add(-1 * rl.rotationTime).Date()
+	if currFileYear == rotateYear && currFileMonth == rotateMonth && currFileDay == rotateDay {
 		return true
 	}
 	return false
@@ -466,7 +496,7 @@ func dir() string {
 }
 
 func filename() string {
-	if FilePath != "" {
+	if FilePath != IsNull {
 		return FilePath
 	}
 	name := filepath.Base(os.Args[0]) + "-lumberjack.log"
@@ -543,7 +573,9 @@ func (rl *RotateLogs) compressLogFiles() error {
 			continue
 		}
 		fiName2Time := rl.ParseTimeFromFileName(TimeFormat, fi.Name())
+		//fiName2Time := rl.ParseTimeStrFromFileName(fi.Name())
 		if fi.Name() != rl.curFn && !rl.isToday(fiName2Time) {
+			//if fi.Name() != rl.curFn && !rl.isTodayByTimeStr(fiName2Time) {
 			files = append(files, fi.Name())
 		}
 	}
@@ -601,10 +633,12 @@ func (rl *RotateLogs) cronTask(cronTime string) {
 func (rl *RotateLogs) cronFunc() {
 	go func() {
 		//删除过期文件
-		if err := rl.deleteFile(rl.CompareTimeWithDay); err != nil {
-			fmt.Println(err)
+		if rl.maxAge > 0 {
+			if err := rl.deleteFile(rl.CompareTimeWithDay); err != nil {
+				fmt.Println(err)
+			}
 		}
-		//删除之前解压的文件
+		//删除已解压的文件
 		if err := rl.deleteSameLogFile(); err != nil {
 			fmt.Println(err)
 		}
@@ -624,8 +658,8 @@ func (rl *RotateLogs) Init() {
 }
 
 func getNewFileName(rotationSize int64, clock Clock) string {
-	var index int
-	var newFileName string
+	index := 1
+	newFileName := IsNull
 	newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, clock, TimeFormat)
 	fileInfo, err := os.Stat(newFileName)
 	if err != nil {

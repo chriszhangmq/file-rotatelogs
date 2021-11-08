@@ -53,11 +53,6 @@ type RotateLogs struct {
 	compressFile   bool
 }
 
-type fileNmeInfo struct {
-	fileName string
-	fileTime string
-}
-
 // Clock is the interface used by the RotateLogs
 // object to determine the current time
 type Clock interface {

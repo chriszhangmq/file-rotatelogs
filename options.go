@@ -52,27 +52,27 @@ func WithLocation(loc *time.Location) Option {
 // WithMaxAge creates a new Option that sets the
 // max age of a log file before it gets purged from
 // the file system.
-func WithMaxAge(d int) Option {
-	return option.New(optkeyMaxAge, d)
+func WithMaxAge(day int) Option {
+	return option.New(optkeyMaxAge, day)
 }
 
 // WithRotationTime creates a new Option that sets the
 // time between rotation.
-func WithRotationTime(d int) Option {
-	return option.New(optkeyRotationTime, d)
+func WithRotationTime(day int) Option {
+	return option.New(optkeyRotationTime, day)
 }
 
 // WithRotationSize creates a new Option that sets the
 // log file size between rotation.
-func WithRotationSize(s int) Option {
-	return option.New(optkeyRotationSize, s)
+func WithRotationSize(sizeMB int) Option {
+	return option.New(optkeyRotationSize, sizeMB)
 }
 
 // WithRotationCount creates a new Option that sets the
 // number of files should be kept before it gets
 // purged from the file system.
-func WithRotationCount(n uint) Option {
-	return option.New(optkeyRotationCount, n)
+func WithRotationCount(num uint) Option {
+	return option.New(optkeyRotationCount, num)
 }
 
 // WithHandler creates a new Option that specifies the
@@ -82,14 +82,14 @@ func WithHandler(h Handler) Option {
 	return option.New(optkeyHandler, h)
 }
 
-func WithFilePath(s string) Option {
-	return option.New(optkeyFilePath, s)
+func WithFilePath(filePath string) Option {
+	return option.New(optkeyFilePath, filePath)
 }
 
-func WithFileName(s string) Option {
-	return option.New(optkeyFileName, s)
+func WithFileName(fileName string) Option {
+	return option.New(optkeyFileName, fileName)
 }
 
-func CompressFile() Option {
-	return option.New(optkeyCompressFile, true)
+func WithCompressFile(needCompress bool) Option {
+	return option.New(optkeyCompressFile, needCompress)
 }
