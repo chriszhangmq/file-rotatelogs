@@ -1,4 +1,4 @@
-module github.com/chriszhangmq/file-rotatelogs
+module github.com/chriszhangmq/file-rotatelogs/v3
 
 go 1.12
 
