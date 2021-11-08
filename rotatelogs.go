@@ -159,7 +159,10 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 	} else if !sizeRotation && rl.rotationTime > 0 {
 		//文件存在：判断当前文件是否需要按天的分割
 		//currFileTime := rl.ParseTimeFromFileName(TimeFormat, rl.curFn)
-		if rl.CompareTimeWithDay(rl.clock.Now().Add(-1*rl.rotationTime), parseCurrFileTime) {
+		//if rl.CompareTimeWithDay(rl.clock.Now().Add(-1*rl.rotationTime), parseCurrFileTime) {
+		//	forceNewFile = true
+		//}
+		if rl.clock.Now().Sub(parseCurrFileTime).Truncate(rl.rotationTime) >= rl.rotationTime {
 			forceNewFile = true
 		}
 	}
@@ -172,7 +175,7 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		//按照天、文件大小分割文件：获取新的文件名
 		filename = getNewFileName(rl.rotationSize, rl.clock)
 		//获取当前文件的时间
-		parseCurrFileTime = rl.ParseTimeFromFileName(TimeFormat, rl.curFn)
+		parseCurrFileTime = rl.ParseTimeFromFileName(TimeFormat, filename)
 	}
 
 	fh, err := fileutil.CreateFile(filename)
@@ -377,13 +380,19 @@ func getTimeFromStr(str string) string {
 	return ""
 }
 
-func (rl *RotateLogs) CompareTimeWithDay(cutOffTime time.Time, fileTime time.Time) bool {
+func (rl *RotateLogs) isMaxDay(cutOffTime time.Time, fileTime time.Time) bool {
 	cutOffDateString := cutOffTime.Format(TimeFormat)
 	cutOffDate, _ := time.Parse(TimeFormat, cutOffDateString)
 	fileDateString := fileTime.Format(TimeFormat)
 	fileDate, _ := time.Parse(TimeFormat, fileDateString)
 	return fileDate.Before(cutOffDate)
 }
+
+//func (rl *RotateLogs) CompareTimeWithDay(cutOffTime time.Time, fileTime time.Time) bool {
+//	cutOffDateString := cutOffTime.Format(TimeFormat)
+//	cutOffDate, _ := time.Parse(TimeFormat, cutOffDateString)
+//	return fileTime.Before(cutOffDate)
+//}
 
 func (rl *RotateLogs) isToday(currTime time.Time) bool {
 	currYear, currMonth, currDay := currTime.Date()
@@ -402,14 +411,15 @@ func (rl *RotateLogs) isTodayByTimeStr(currTimeStr string) bool {
 	return false
 }
 
-func (rl *RotateLogs) isRotateByDay(currFileTime time.Time) bool {
-	currFileYear, currFileMonth, currFileDay := currFileTime.Date()
-	rotateYear, rotateMonth, rotateDay := rl.clock.Now().Add(-1 * rl.rotationTime).Date()
-	if currFileYear == rotateYear && currFileMonth == rotateMonth && currFileDay == rotateDay {
-		return true
-	}
-	return false
-}
+//
+//func (rl *RotateLogs) isRotateByDay(currFileTime time.Time) bool {
+//	currFileYear, currFileMonth, currFileDay := currFileTime.Date()
+//	rotateYear, rotateMonth, rotateDay := rl.clock.Now().Add(-1 * rl.rotationTime).Date()
+//	if currFileYear == rotateYear && currFileMonth == rotateMonth && currFileDay == rotateDay {
+//		return true
+//	}
+//	return false
+//}
 
 func (rl *RotateLogs) fileIsNotToday(currTime time.Time, fileTime time.Time) bool {
 	fileYear, fileMonth, fileDay := fileTime.Date()
@@ -584,7 +594,7 @@ func (rl *RotateLogs) compressLogFiles() error {
 }
 
 //删除文件: .log 、 .gz
-func (rl *RotateLogs) deleteFile(dealFunc func(t time.Time, fileTime time.Time) bool) error {
+func (rl *RotateLogs) deleteFile() error {
 	matches, err := filepath.Glob(rl.globLogPattern)
 	if err != nil {
 		return err
@@ -610,7 +620,7 @@ func (rl *RotateLogs) deleteFile(dealFunc func(t time.Time, fileTime time.Time) 
 		}
 		//按天数判断是否保留
 		fiName2Time := rl.ParseTimeFromFileName(TimeFormat, fi.Name())
-		if rl.maxAge > 0 && dealFunc(cutoff, fiName2Time) {
+		if rl.maxAge > 0 && rl.isMaxDay(cutoff, fiName2Time) {
 			removeFiles = append(removeFiles, path)
 		}
 	}
@@ -634,7 +644,7 @@ func (rl *RotateLogs) cronFunc() {
 	go func() {
 		//删除过期文件
 		if rl.maxAge > 0 {
-			if err := rl.deleteFile(rl.CompareTimeWithDay); err != nil {
+			if err := rl.deleteFile(); err != nil {
 				fmt.Println(err)
 			}
 		}
