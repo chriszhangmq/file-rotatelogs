@@ -41,6 +41,7 @@ func New(options ...Option) (*RotateLogs, error) {
 	var fileName string
 	var compressFile bool
 	var cronTime string
+	var linkName string
 
 	for _, o := range options {
 		switch o.Name() {
@@ -73,6 +74,10 @@ func New(options ...Option) (*RotateLogs, error) {
 			compressFile = o.Value().(bool)
 		case optkeyCronTime:
 			cronTime = o.Value().(string)
+		case optkeyLinkName:
+			if o.Value().(bool) {
+				linkName = filePath + fileName
+			}
 		}
 	}
 
@@ -99,7 +104,7 @@ func New(options ...Option) (*RotateLogs, error) {
 		clock:          clock,
 		eventHandler:   handler,
 		globLogPattern: globLogPattern,
-		linkName:       filePath + fileName,
+		linkName:       linkName,
 		maxAge:         time.Duration(maxAge*24) * time.Hour,
 		pattern:        pattern,
 		rotationTime:   time.Duration(rotationTime*24) * time.Hour,
