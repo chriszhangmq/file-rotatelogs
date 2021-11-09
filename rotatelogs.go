@@ -616,7 +616,11 @@ func (rl *RotateLogs) compressLogFiles() error {
 			files = append(files, fi.Name())
 		}
 	}
-	compressFunc(files)
+	if len(files) > 0 {
+		go func() {
+			compressFunc(files)
+		}()
+	}
 	return nil
 }
 
@@ -626,7 +630,7 @@ func (rl *RotateLogs) deleteFile() error {
 	if err != nil {
 		return err
 	}
-	files := make([]string, 0, len(matches))
+	removeFiles := make([]string, 0, len(matches))
 	cutoff := rl.clock.Now().Add(-1 * rl.maxAge)
 	for _, path := range matches {
 		// Ignore lock files
@@ -647,11 +651,17 @@ func (rl *RotateLogs) deleteFile() error {
 		}
 		//按天数判断是否保留
 		if rl.maxAge > 0 && rl.IsMaxDay(cutoff, fi.ModTime()) {
-			files = append(files, fi.Name())
+			removeFiles = append(removeFiles, fi.Name())
 		}
 	}
-	for _, path := range files {
-		os.Remove(path)
+	if len(removeFiles) > 0 {
+		go func() {
+			for _, path := range removeFiles {
+				if err := os.Remove(path); err != nil {
+					fmt.Println(err)
+				}
+			}
+		}()
 	}
 	return nil
 }
