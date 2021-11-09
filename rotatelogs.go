@@ -31,9 +31,11 @@ const Space = " "
 const IsNull = ""
 
 var (
-	FilePath          string
-	FileName          string
-	parseCurrFileTime time.Time
+	FilePath             string
+	FileName             string
+	parseCurrFileTime    time.Time
+	parseCurrFileTimeStr string
+	CountDay             int
 )
 
 func (c clockFn) Now() time.Time {
@@ -106,6 +108,7 @@ func New(options ...Option) (*RotateLogs, error) {
 
 	FilePath = filePath
 	FileName = fileName
+	CountDay = 0
 
 	return &RotateLogs{
 		clock:          clock,
@@ -162,8 +165,12 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		//if rl.CompareTimeWithDay(rl.clock.Now().Add(-1*rl.rotationTime), parseCurrFileTime) {
 		//	forceNewFile = true
 		//}
-		if rl.clock.Now().Sub(parseCurrFileTime).Truncate(rl.rotationTime) >= rl.rotationTime {
-			forceNewFile = true
+		if !rl.isTodayByTimeStr(parseCurrFileTimeStr) {
+			CountDay++
+			if CountDay >= (int)(rl.rotationTime/24*time.Hour) {
+				CountDay = 0
+				forceNewFile = true
+			}
 		}
 	}
 	//不需要分割
@@ -175,7 +182,8 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		//按照天、文件大小分割文件：获取新的文件名
 		filename = getNewFileName(rl.rotationSize, rl.clock)
 		//获取当前文件的时间
-		parseCurrFileTime = rl.ParseTimeFromFileName(TimeFormat, filename)
+		//parseCurrFileTime = rl.ParseTimeFromFileName(TimeFormat, filename)
+		parseCurrFileTimeStr = getTimeFromStr(filename)
 	}
 
 	fh, err := fileutil.CreateFile(filename)
@@ -388,11 +396,12 @@ func (rl *RotateLogs) isMaxDay(cutOffTime time.Time, fileTime time.Time) bool {
 	return fileDate.Before(cutOffDate)
 }
 
-//func (rl *RotateLogs) CompareTimeWithDay(cutOffTime time.Time, fileTime time.Time) bool {
-//	cutOffDateString := cutOffTime.Format(TimeFormat)
-//	cutOffDate, _ := time.Parse(TimeFormat, cutOffDateString)
-//	return fileTime.Before(cutOffDate)
-//}
+////////////////////////////////////
+func (rl *RotateLogs) CompareTimeWithDay(cutOffTime time.Time, fileTime time.Time) bool {
+	cutOffDateString := cutOffTime.Format(TimeFormat)
+	cutOffDate, _ := time.Parse(TimeFormat, cutOffDateString)
+	return fileTime.Before(cutOffDate)
+}
 
 func (rl *RotateLogs) isToday(currTime time.Time) bool {
 	currYear, currMonth, currDay := currTime.Date()
