@@ -100,6 +100,18 @@ func New(options ...Option) (*RotateLogs, error) {
 		return nil, errors.Wrap(err, `invalid strftime pattern`)
 	}
 
+	if (rotationTime > 0 || maxAge > 0) && cronTime == common.IsNull {
+		return nil, errors.Wrap(err, `cronTime is required`)
+	}
+
+	if (rotationTime <= 0 || maxAge <= 0) && cronTime != common.IsNull {
+		return nil, errors.Wrap(err, `rotationTime or maxAge is required`)
+	}
+
+	if compressFile && cronTime == common.IsNull {
+		return nil, errors.Wrap(err, `To use compressFile, you need to fill in cronTime`)
+	}
+
 	return &RotateLogs{
 		clock:          clock,
 		eventHandler:   handler,
@@ -453,12 +465,12 @@ func (rl *RotateLogs) cronFunc() {
 			fmt.Println(err)
 		}
 	}
-	//删除已解压的文件
-	if err := rl.deleteSameLogFile(); err != nil {
-		fmt.Println(err)
-	}
 	//压缩非当天文件
 	if rl.compressFile {
+		//删除已解压的文件
+		if err := rl.deleteSameLogFile(); err != nil {
+			fmt.Println(err)
+		}
 		if err := rl.compressLogFiles(); err != nil {
 			fmt.Println(err)
 		}
@@ -468,7 +480,7 @@ func (rl *RotateLogs) cronFunc() {
 func (rl *RotateLogs) Init() {
 	if rl.cronTime != common.IsNull {
 		rl.cronTask(rl.cronTime)
+		rl.cronFunc()
 	}
-	rl.cronFunc()
 	rl.deleteLockSymlinkFile()
 }
