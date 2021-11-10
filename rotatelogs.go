@@ -447,24 +447,22 @@ func (rl *RotateLogs) cronTask(cronTime string) {
 }
 
 func (rl *RotateLogs) cronFunc() {
-	go func() {
-		//删除过期文件
-		if rl.maxAge > 0 {
-			if err := rl.deleteFile(); err != nil {
-				fmt.Println(err)
-			}
-		}
-		//删除已解压的文件
-		if err := rl.deleteSameLogFile(); err != nil {
+	//删除过期文件
+	if rl.maxAge > 0 {
+		if err := rl.deleteFile(); err != nil {
 			fmt.Println(err)
 		}
-		//压缩非当天文件
-		if rl.compressFile {
-			if err := rl.compressLogFiles(); err != nil {
-				fmt.Println(err)
-			}
+	}
+	//删除已解压的文件
+	if err := rl.deleteSameLogFile(); err != nil {
+		fmt.Println(err)
+	}
+	//压缩非当天文件
+	if rl.compressFile {
+		if err := rl.compressLogFiles(); err != nil {
+			fmt.Println(err)
 		}
-	}()
+	}
 }
 
 func (rl *RotateLogs) Init() {
