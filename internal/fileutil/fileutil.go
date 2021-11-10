@@ -130,8 +130,12 @@ func getTimeFromStr(str string) string {
 func CompressLogFiles(compressFile []string, filePath string) {
 	for _, f := range compressFile {
 		fn := filepath.Join(dir(filePath), f)
-		_, err := os.Stat(fn)
-		if err != nil {
+		//The destination compressed file does not exist
+		if _, err := os.Stat(fn); err != nil {
+			continue
+		}
+		//Compressed file already exists
+		if _, err := os.Stat(fn + common.CompressSuffix); err == nil {
 			continue
 		}
 		errCompress := compressLogFile(fn, fn+common.CompressSuffix)
