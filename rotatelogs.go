@@ -97,19 +97,19 @@ func New(options ...Option) (*RotateLogs, error) {
 
 	pattern, err := strftime.New(p)
 	if err != nil {
-		return nil, errors.Wrap(err, `invalid strftime pattern`)
+		return nil, errors.New("invalid strftime pattern")
 	}
 
 	if (rotationTime > 0 || maxAge > 0) && cronTime == common.IsNull {
-		return nil, errors.Wrap(err, `cronTime is required`)
+		return nil, errors.New("cronTime is required")
 	}
 
 	if (rotationTime <= 0 || maxAge <= 0) && cronTime != common.IsNull {
-		return nil, errors.Wrap(err, `rotationTime or maxAge is required`)
+		return nil, errors.New("rotationTime or maxAge is required")
 	}
 
 	if compressFile && cronTime == common.IsNull {
-		return nil, errors.Wrap(err, `To use compressFile, you need to fill in cronTime`)
+		return nil, errors.New("To use compressFile, you need to fill in cronTime")
 	}
 
 	return &RotateLogs{
