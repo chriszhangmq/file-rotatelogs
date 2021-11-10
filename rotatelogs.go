@@ -613,7 +613,7 @@ func (rl *RotateLogs) compressLogFiles() error {
 			continue
 		}
 		if fi.Name() != rl.curFn && !rl.isToday(fi.ModTime()) {
-			files = append(files, fi.Name())
+			files = append(files, path)
 		}
 	}
 	if len(files) > 0 {
@@ -651,7 +651,7 @@ func (rl *RotateLogs) deleteFile() error {
 		}
 		//按天数判断是否保留
 		if rl.maxAge > 0 && rl.IsMaxDay(cutoff, fi.ModTime()) {
-			removeFiles = append(removeFiles, fi.Name())
+			removeFiles = append(removeFiles, path)
 		}
 	}
 	if len(removeFiles) > 0 {
