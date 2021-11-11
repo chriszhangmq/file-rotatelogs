@@ -1,6 +1,7 @@
 package fileutil
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -39,6 +40,23 @@ func GenerateFn(pattern *strftime.Strftime, clock interface{ Now() time.Time }, 
 	}
 
 	return pattern.FormatString(base)
+}
+
+//产生新的文件名（用于按大小分割文件）
+func GenerateFileNme(path string, name string, suffix string, clock interface{ Now() time.Time }) string {
+	now := clock.Now()
+
+	var base time.Time
+	if now.Location() != time.UTC {
+		base = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), time.UTC)
+		//base = base.Truncate(rotationTime)
+		base = time.Date(base.Year(), base.Month(), base.Day(), base.Hour(), base.Minute(), base.Second(), base.Nanosecond(), base.Location())
+	}
+
+	//拼接文件名
+	year, month, day := base.Date()
+	fileName := fmt.Sprintf("%s%s-%d%d%d%s", path, name, year, month, day, suffix)
+	return fileName
 }
 
 //产生新的文件名（用于按大小分割文件）

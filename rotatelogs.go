@@ -20,13 +20,24 @@ import (
 	"github.com/pkg/errors"
 )
 
+const LogTimeFormat = "2006-01-02"
+const FileSuffix = ".log"
+
+var (
+	FilePath string
+	FileName string
+)
+
 func (c clockFn) Now() time.Time {
 	return c()
 }
 
 // New creates a new RotateLogs object. A log filename pattern
 // must be passed. Optional `Option` parameters may be passed
-func New(p string, options ...Option) (*RotateLogs, error) {
+func New(filePath string, fileName string, options ...Option) (*RotateLogs, error) {
+	FilePath = filePath
+	FileName = fileName
+	p := filePath + fileName + "-" + time.Now().Format(LogTimeFormat) + FileSuffix
 	globPattern := p
 	for _, re := range patternConversionRegexps {
 		globPattern = re.ReplaceAllString(globPattern, "*")
@@ -123,7 +134,8 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 
 	// This filename contains the name of the "NEW" filename
 	// to log to, which may be newer than rl.currentFilename
-	baseFn := fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
+	//baseFn := fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
+	baseFn := fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock)
 	filename := baseFn
 	var forceNewFile bool
 
@@ -139,7 +151,7 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		sizeRotation = true
 	} else if !sizeRotation {
 		//文件存在：判断当前文件是否为当天的文件
-		currTime := rl.ParseTimeFromFileName("2006-01-02", rl.curFn)
+		currTime := rl.ParseTimeFromFileName(LogTimeFormat, rl.curFn)
 		if !rl.isToday(currTime) {
 			forceNewFile = true
 		}
@@ -162,7 +174,8 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		if !sizeRotation {
 			//按照天来分割文件，获取新的文件名
 			var newFileName string
-			newFileName = fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
+			//newFileName = fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
+			newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock)
 			if _, err := os.Stat(newFileName); err != nil {
 				filename = newFileName
 			}
@@ -171,7 +184,7 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 			var newFileName string
 			var index int
 			for {
-				newFileName = fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
+				newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock)
 				newFileName = fmt.Sprintf("%s.%d%s", newFileName, index, ".log")
 				index++
 				//filename = newFileName
