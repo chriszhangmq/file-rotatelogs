@@ -506,6 +506,15 @@ func (rl *RotateLogs) isToday(currTime time.Time) bool {
 	return false
 }
 
+func (rl *RotateLogs) fileIsToday(currTime time.Time, fileTime time.Time) bool {
+	fileYear, fileMonth, fileDay := fileTime.Date()
+	todayYear, todayMonth, todayDay := currTime.Date()
+	if fileYear == todayYear && fileMonth == todayMonth && fileDay == todayDay {
+		return true
+	}
+	return false
+}
+
 func compressFunc(compressFile []string) {
 	for _, f := range compressFile {
 		fn := filepath.Join(dir(), f)
@@ -612,8 +621,9 @@ func (rl *RotateLogs) compressLogFiles() error {
 		if fl.Mode()&os.ModeSymlink == os.ModeSymlink {
 			continue
 		}
-		if fi.Name() != rl.curFn && !rl.isToday(fi.ModTime()) {
-			files = append(files, path)
+		fiName2Time := rl.ParseTimeFromFileName(TimeFormat, fi.Name())
+		if fi.Name() != rl.curFn && !rl.isToday(fiName2Time) {
+			files = append(files, fi.Name())
 		}
 	}
 	if len(files) > 0 {
@@ -625,7 +635,7 @@ func (rl *RotateLogs) compressLogFiles() error {
 }
 
 //删除文件: .log 、 .gz
-func (rl *RotateLogs) deleteFile() error {
+func (rl *RotateLogs) deleteFile(dealFunc func(t time.Time, fileTime time.Time) bool) error {
 	matches, err := filepath.Glob(rl.globLogPattern)
 	if err != nil {
 		return err
@@ -650,7 +660,8 @@ func (rl *RotateLogs) deleteFile() error {
 			continue
 		}
 		//按天数判断是否保留
-		if rl.maxAge > 0 && rl.IsMaxDay(cutoff, fi.ModTime()) {
+		fiName2Time := rl.ParseTimeFromFileName(TimeFormat, fi.Name())
+		if rl.maxAge > 0 && dealFunc(cutoff, fiName2Time) {
 			removeFiles = append(removeFiles, path)
 		}
 	}
@@ -679,7 +690,7 @@ func (rl *RotateLogs) cronTask(cronTime string) {
 
 func (rl *RotateLogs) cronFunc() {
 	//删除过期文件
-	if err := rl.deleteFile(); err != nil {
+	if err := rl.deleteFile(rl.IsMaxDay); err != nil {
 		fmt.Println(err)
 	}
 	//压缩非当天文件
@@ -690,4 +701,8 @@ func (rl *RotateLogs) cronFunc() {
 
 func (rl *RotateLogs) Init() {
 	rl.cronTask("0 0 1 * * ?")
+	//删除非当天文件
+	if err := rl.deleteFile(rl.fileIsToday); err != nil {
+		fmt.Println(err)
+	}
 }
