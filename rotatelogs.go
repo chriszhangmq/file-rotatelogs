@@ -36,6 +36,8 @@ func (c clockFn) Now() time.Time {
 // must be passed. Optional `Option` parameters may be passed
 func New(filePath string, fileName string, options ...Option) (*RotateLogs, error) {
 	p := filePath + fileName + "-" + TimeFormat + FileSuffix
+	FilePath = filePath
+	FileName = fileName
 	globPattern := p
 	for _, re := range patternConversionRegexps {
 		globPattern = re.ReplaceAllString(globPattern, "*")
@@ -132,7 +134,8 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 
 	// This filename contains the name of the "NEW" filename
 	// to log to, which may be newer than rl.currentFilename
-	baseFn := fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
+	//baseFn := fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
+	baseFn := fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock)
 	filename := baseFn
 	var forceNewFile bool
 
@@ -171,7 +174,8 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		if !sizeRotation {
 			//按照天来分割文件，获取新的文件名
 			var newFileName string
-			newFileName = fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
+			//newFileName = fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
+			newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock)
 			if _, err := os.Stat(newFileName); err != nil {
 				filename = newFileName
 			}
@@ -180,7 +184,8 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 			var newFileName string
 			var index int
 			for {
-				newFileName = fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
+				//newFileName = fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
+				newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock)
 				newFileName = fmt.Sprintf("%s.%d%s", newFileName, index, ".log")
 				index++
 				//filename = newFileName
