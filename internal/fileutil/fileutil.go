@@ -55,7 +55,7 @@ func GenerateFileNme(path string, name string, suffix string, clock interface{ N
 
 	//拼接文件名
 	year, month, day := base.Date()
-	fileName := fmt.Sprintf("%s%s-%d%d%d%s", path, name, year, month, day, suffix)
+	fileName := fmt.Sprintf("%s%s-%d-%d-%d%s", path, name, year, month, day, suffix)
 	return fileName
 }
 
