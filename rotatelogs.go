@@ -20,7 +20,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const LogTimeFormat = "2006-01-02"
+const TimeFormat = "2006-01-02"
 const FileSuffix = ".log"
 
 var (
@@ -34,7 +34,8 @@ func (c clockFn) Now() time.Time {
 
 // New creates a new RotateLogs object. A log filename pattern
 // must be passed. Optional `Option` parameters may be passed
-func New(p string, options ...Option) (*RotateLogs, error) {
+func New(filePath string, fileName string, options ...Option) (*RotateLogs, error) {
+	p := filePath + fileName + "-" + TimeFormat + FileSuffix
 	globPattern := p
 	for _, re := range patternConversionRegexps {
 		globPattern = re.ReplaceAllString(globPattern, "*")
