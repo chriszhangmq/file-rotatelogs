@@ -130,6 +130,10 @@ func getTimeFromStr(str string) string {
 func CompressLogFiles(compressFile []string, filePath string) {
 	for _, f := range compressFile {
 		fn := filepath.Join(dir(filePath), f)
+		_, err := os.Stat(fn)
+		if err != nil {
+			continue
+		}
 		errCompress := compressLogFile(fn, fn+common.CompressSuffix)
 		if errCompress != nil {
 			log.Println(errCompress)
