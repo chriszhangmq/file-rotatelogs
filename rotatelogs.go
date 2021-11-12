@@ -532,7 +532,11 @@ func getNewFileName(rotationSize int64, clock Clock) string {
 		//文件不存在：创建新的文件
 		return newFileName
 	}
-	//文件存在：判断大小
+	//文件存在：不按照大小划分
+	if rotationSize <= 0 {
+		return newFileName
+	}
+	//文件存在：需要按照大小划分
 	if rotationSize > 0 && rotationSize > fileInfo.Size() {
 		return newFileName
 	}
