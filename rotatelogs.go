@@ -506,13 +506,13 @@ func (rl *RotateLogs) isToday(currTime time.Time) bool {
 	return false
 }
 
-func (rl *RotateLogs) fileIsToday(currTime time.Time, fileTime time.Time) bool {
+func (rl *RotateLogs) fileIsNotToday(currTime time.Time, fileTime time.Time) bool {
 	fileYear, fileMonth, fileDay := fileTime.Date()
 	todayYear, todayMonth, todayDay := currTime.Date()
 	if fileYear == todayYear && fileMonth == todayMonth && fileDay == todayDay {
-		return true
+		return false
 	}
-	return false
+	return true
 }
 
 func compressFunc(compressFile []string) {
@@ -598,6 +598,39 @@ func filename() string {
 	return filepath.Join(os.TempDir(), name)
 }
 
+//清除已被压缩的.log文件
+func (rl *RotateLogs) deleteSameLogFile() error {
+	matches, err := filepath.Glob(rl.globLogPattern)
+	if err != nil {
+		return err
+	}
+	removeSuffixFilesMap := make(map[string]string, len(matches))
+	for _, path := range matches {
+		if !strings.HasSuffix(path, CompressSuffix) {
+			continue
+		}
+		removeSuffixFile := strings.TrimSuffix(path, CompressSuffix)
+		removeSuffixFilesMap[removeSuffixFile] = removeSuffixFile
+	}
+	removeFiles := make([]string, 0, len(matches))
+	for _, path := range matches {
+		if strings.HasSuffix(path, CompressSuffix) {
+			continue
+		}
+		if _, ok := removeSuffixFilesMap[path]; ok {
+			removeFiles = append(removeFiles, path)
+		}
+	}
+	if len(removeFiles) > 0 {
+		go func() {
+			for _, path := range removeFiles {
+				os.Remove(path)
+			}
+		}()
+	}
+	return nil
+}
+
 //压缩日志文件
 func (rl *RotateLogs) compressLogFiles() error {
 	matches, err := filepath.Glob(rl.globLogPattern)
@@ -668,9 +701,7 @@ func (rl *RotateLogs) deleteFile(dealFunc func(t time.Time, fileTime time.Time) 
 	if len(removeFiles) > 0 {
 		go func() {
 			for _, path := range removeFiles {
-				if err := os.Remove(path); err != nil {
-					fmt.Println(err)
-				}
+				os.Remove(path)
 			}
 		}()
 	}
@@ -680,7 +711,6 @@ func (rl *RotateLogs) deleteFile(dealFunc func(t time.Time, fileTime time.Time) 
 // 定时任务
 func (rl *RotateLogs) cronTask(cronTime string) {
 	cronObj := cron.New()
-	//err:= cronObj.AddFunc("0 0 1 * * ?", rl.cronFunc)
 	err := cronObj.AddFunc(cronTime, rl.cronFunc)
 	if err != nil {
 		fmt.Println(err)
@@ -693,6 +723,10 @@ func (rl *RotateLogs) cronFunc() {
 	if err := rl.deleteFile(rl.IsMaxDay); err != nil {
 		fmt.Println(err)
 	}
+	//删除之前解压的文件
+	if err := rl.deleteSameLogFile(); err != nil {
+		fmt.Println(err)
+	}
 	//压缩非当天文件
 	if err := rl.compressLogFiles(); err != nil {
 		fmt.Println(err)
@@ -701,8 +735,5 @@ func (rl *RotateLogs) cronFunc() {
 
 func (rl *RotateLogs) Init() {
 	rl.cronTask("0 0 1 * * ?")
-	//删除非当天文件
-	if err := rl.deleteFile(rl.fileIsToday); err != nil {
-		fmt.Println(err)
-	}
+	rl.cronFunc()
 }
