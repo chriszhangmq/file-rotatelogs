@@ -135,12 +135,8 @@ func CompressLogFiles(compressFile []string, filePath string) {
 			continue
 		}
 		errCompress := compressLogFile(fn, fn+common.CompressSuffix)
-		if errCompress != nil {
-			log.Println(errCompress)
-		} else {
-			if err := os.Remove(f); err != nil {
-				log.Println(err)
-			}
+		if errCompress == nil {
+			os.Remove(f)
 		}
 	}
 }
