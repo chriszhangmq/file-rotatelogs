@@ -3,7 +3,6 @@ package fileutil
 import (
 	"compress/gzip"
 	"fmt"
-	rotatelogs "github.com/chriszhangmq/file-rotatelogs"
 	"github.com/chriszhangmq/file-rotatelogs/internal/common"
 	"io"
 	"log"
@@ -211,7 +210,7 @@ func filename(filePath string) string {
 	return filepath.Join(os.TempDir(), name)
 }
 
-func GetNewFileName(filePath string, fileName string, rotationSize int64, clock rotatelogs.Clock) string {
+func GetNewFileName(filePath string, fileName string, rotationSize int64, clock interface{ Now() time.Time }) string {
 	index := 1
 	newFileName := common.IsNull
 	newFileName = GenerateFileNme(filePath, fileName, common.FileSuffix, clock, common.TimeFormat)
