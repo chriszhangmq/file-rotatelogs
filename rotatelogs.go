@@ -104,7 +104,7 @@ func New(options ...Option) (*RotateLogs, error) {
 		rotationSize:   rotationSize * 1024 * 1024,
 		rotationCount:  rotationCount,
 		fileName:       fileName,
-		filePath:       fileName,
+		filePath:       filePath,
 		compressFile:   compressFile,
 		cronTime:       cronTime,
 	}, nil
