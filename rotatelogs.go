@@ -30,6 +30,7 @@ const SymlinkSuffix = "_symlink"
 const Space = " "
 const IsNull = ""
 
+//记录文件路径、文件名
 var (
 	FilePath string
 	FileName string
