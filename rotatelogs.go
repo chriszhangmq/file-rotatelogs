@@ -254,6 +254,7 @@ func (rl *RotateLogs) CurrentFileName() string {
 }
 
 var patternConversionRegexps = []*regexp.Regexp{
+	regexp.MustCompile(`-[-+0-9]`),
 	regexp.MustCompile(`%[%+A-Za-z]`),
 	regexp.MustCompile(`\*+`),
 }
