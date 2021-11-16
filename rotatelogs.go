@@ -175,10 +175,11 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 	}
 	//需要创建新文件
 	if forceNewFile {
+		wait := sync.WaitGroup{}
+		wait.Add(1)
 		//按照天、文件大小来分割文件
-		rl.mutex.Lock()
-		filename = getNewFileName(rl.rotationSize, rl.clock)
-		rl.mutex.Unlock()
+		filename = getNewFileName(rl.rotationSize, rl.clock, wait)
+		wait.Wait()
 	}
 
 	fh, err := fileutil.CreateFile(filename)
@@ -718,7 +719,7 @@ func (rl *RotateLogs) Init() {
 }
 
 //获取新的文件名
-func getNewFileName(rotationSize int64, currClock Clock) string {
+func getNewFileName(rotationSize int64, currClock Clock, wait sync.WaitGroup) string {
 	newFileName := fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, currClock, TimeFormat)
 	for {
 		fileInfo, err := os.Stat(newFileName)
@@ -733,5 +734,6 @@ func getNewFileName(rotationSize int64, currClock Clock) string {
 		newFileName = fmt.Sprintf("%s.%d%s", newFileName, FileIndex, FileSuffix)
 		atomic.AddInt64(&FileIndex, 1)
 	}
+	wait.Done()
 	return newFileName
 }
