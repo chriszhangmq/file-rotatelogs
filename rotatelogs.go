@@ -141,10 +141,14 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 	// This filename contains the name of the "NEW" filename
 	// to log to, which may be newer than rl.currentFilename
 	//baseFn := fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
-	//baseFn := fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
+	baseFn := fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
 	//filename := baseFn
 	var filename string
 	var forceNewFile bool
+
+	if rl.curFn == "" {
+		rl.curFn = baseFn
+	}
 
 	fi, err := os.Stat(rl.curFn)
 	sizeRotation := false
@@ -161,7 +165,7 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		currTime := rl.ParseTimeFromFileName(TimeFormat, rl.curFn)
 		if !rl.isToday(currTime) {
 			forceNewFile = true
-			atomic.StoreInt64(&FileIndex, 0)
+			atomic.StoreInt64(&FileIndex, 1)
 		}
 		//每次启动程序，新建文件
 		//if rl.forceNewFile{
