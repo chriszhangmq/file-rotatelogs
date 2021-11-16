@@ -27,11 +27,9 @@ const TimeFormat = "2006-01-02"
 const FileSuffix = ".log"
 const CompressSuffix = ".gz"
 
-//type ByFormatTime []logFileInfo
 var (
 	FilePath  string
 	FileName  string
-	OsStat    = os.Stat
 	FileIndex int64
 )
 
@@ -163,6 +161,7 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		currTime := rl.ParseTimeFromFileName(TimeFormat, rl.curFn)
 		if !rl.isToday(currTime) {
 			forceNewFile = true
+			atomic.StoreInt64(&FileIndex, 0)
 		}
 		//每次启动程序，新建文件
 		//if rl.forceNewFile{
@@ -505,7 +504,7 @@ func compressLogFile(src, dst string) (err error) {
 	}
 	defer f.Close()
 
-	fi, err := OsStat(src)
+	fi, err := os.Stat(src)
 	if err != nil {
 		return fmt.Errorf("failed to stat log file: %v", err)
 	}
@@ -710,6 +709,7 @@ func (rl *RotateLogs) cronFunc() {
 }
 
 func (rl *RotateLogs) Init() {
+	atomic.StoreInt64(&FileIndex, 1)
 	rl.cronTask("0 0 1 * * ?")
 	rl.cronFunc()
 	rl.deleteLockSymlinkFile()
