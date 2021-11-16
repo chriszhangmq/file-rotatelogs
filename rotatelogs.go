@@ -598,6 +598,24 @@ func filename() string {
 	return filepath.Join(os.TempDir(), name)
 }
 
+//删除所有_lock、_symlink文件
+func (rl *RotateLogs) deleteLockSymlinkFile() {
+	matches, err := filepath.Glob(rl.globLogPattern)
+	if err != nil {
+		fmt.Println(err)
+	}
+	removeFiles := make([]string, 0, len(matches))
+	for _, path := range matches {
+		if !strings.HasSuffix(path, "_lock") || !strings.HasSuffix(path, "_symlink") {
+			continue
+		}
+		removeFiles = append(removeFiles, path)
+	}
+	for _, path := range removeFiles {
+		os.Remove(path)
+	}
+}
+
 //清除已被压缩的.log文件
 func (rl *RotateLogs) deleteSameLogFile() error {
 	matches, err := filepath.Glob(rl.globLogPattern)
@@ -621,12 +639,8 @@ func (rl *RotateLogs) deleteSameLogFile() error {
 			removeFiles = append(removeFiles, path)
 		}
 	}
-	if len(removeFiles) > 0 {
-		go func() {
-			for _, path := range removeFiles {
-				os.Remove(path)
-			}
-		}()
+	for _, path := range removeFiles {
+		os.Remove(path)
 	}
 	return nil
 }
@@ -659,11 +673,7 @@ func (rl *RotateLogs) compressLogFiles() error {
 			files = append(files, fi.Name())
 		}
 	}
-	if len(files) > 0 {
-		go func() {
-			compressFunc(files)
-		}()
-	}
+	compressFunc(files)
 	return nil
 }
 
@@ -698,12 +708,8 @@ func (rl *RotateLogs) deleteFile(dealFunc func(t time.Time, fileTime time.Time) 
 			removeFiles = append(removeFiles, path)
 		}
 	}
-	if len(removeFiles) > 0 {
-		go func() {
-			for _, path := range removeFiles {
-				os.Remove(path)
-			}
-		}()
+	for _, path := range removeFiles {
+		os.Remove(path)
 	}
 	return nil
 }
@@ -719,21 +725,24 @@ func (rl *RotateLogs) cronTask(cronTime string) {
 }
 
 func (rl *RotateLogs) cronFunc() {
-	//删除过期文件
-	if err := rl.deleteFile(rl.IsMaxDay); err != nil {
-		fmt.Println(err)
-	}
-	//删除之前解压的文件
-	if err := rl.deleteSameLogFile(); err != nil {
-		fmt.Println(err)
-	}
-	//压缩非当天文件
-	if err := rl.compressLogFiles(); err != nil {
-		fmt.Println(err)
-	}
+	go func() {
+		//删除过期文件
+		if err := rl.deleteFile(rl.IsMaxDay); err != nil {
+			fmt.Println(err)
+		}
+		//删除之前解压的文件
+		if err := rl.deleteSameLogFile(); err != nil {
+			fmt.Println(err)
+		}
+		//压缩非当天文件
+		if err := rl.compressLogFiles(); err != nil {
+			fmt.Println(err)
+		}
+	}()
 }
 
 func (rl *RotateLogs) Init() {
 	rl.cronTask("0 0 1 * * ?")
 	rl.cronFunc()
+	rl.deleteLockSymlinkFile()
 }
