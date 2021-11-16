@@ -182,8 +182,8 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 			}
 		} else {
 			//按照文件大小分割文件：获取新的文件名
-			newFileName := fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
 			for {
+				newFileName := fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
 				newFileName = fmt.Sprintf("%s.%d%s", newFileName, FileIndex, FileSuffix)
 				atomic.AddInt64(&FileIndex, 1)
 				fileInfo, err := os.Stat(newFileName)
