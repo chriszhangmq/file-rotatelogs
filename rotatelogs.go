@@ -138,14 +138,12 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 	generation := rl.generation
 	previousFn := rl.curFn
 
-	// This filename contains the name of the "NEW" filename
-	// to log to, which may be newer than rl.currentFilename
-	//baseFn := fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
 	baseFn := fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
 	filename := baseFn
-	forceNewFile := false
-	sizeRotation := false
+	var forceNewFile bool
+
 	fi, err := os.Stat(rl.curFn)
+	sizeRotation := false
 	//err != nil说明当前文件不存在
 	if err != nil {
 		//文件不存在
@@ -159,7 +157,6 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		currTime := rl.ParseTimeFromFileName(TimeFormat, rl.curFn)
 		if !rl.isToday(currTime) {
 			forceNewFile = true
-			atomic.StoreInt64(&FileIndex, 1)
 		}
 		//每次启动程序，新建文件
 		//if rl.forceNewFile{
@@ -173,19 +170,27 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 	}
 	//需要创建新文件
 	if forceNewFile {
+		// A new file has been requested. Instead of just using the
+		// regular strftime pattern, we create a new file name using
+		// generational names such as "foo.1", "foo.2", "foo.3", etc
+
 		if !sizeRotation {
 			//按照天来分割文件，获取新的文件名
 			var newFileName string
+			//newFileName = fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
 			newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
 			if _, err := os.Stat(newFileName); err != nil {
 				filename = newFileName
 			}
 		} else {
 			//按照文件大小分割文件：获取新的文件名
+			var newFileName string
 			for {
-				newFileName := fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
+				//newFileName = fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
+				newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
 				newFileName = fmt.Sprintf("%s.%d%s", newFileName, FileIndex, FileSuffix)
 				atomic.AddInt64(&FileIndex, 1)
+				//filename = newFileName
 				fileInfo, err := os.Stat(newFileName)
 				if err != nil {
 					//文件不存在：创建新的文件
