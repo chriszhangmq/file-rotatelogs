@@ -178,7 +178,7 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		wait := sync.WaitGroup{}
 		wait.Add(1)
 		//按照天、文件大小来分割文件
-		filename = getNewFileName(rl.rotationSize, rl.clock, wait)
+		filename = getNewFileName(rl.rotationSize, rl.clock, &wait)
 		wait.Wait()
 	}
 
@@ -719,7 +719,7 @@ func (rl *RotateLogs) Init() {
 }
 
 //获取新的文件名
-func getNewFileName(rotationSize int64, currClock Clock, wait sync.WaitGroup) string {
+func getNewFileName(rotationSize int64, currClock Clock, wait *sync.WaitGroup) string {
 	newFileName := fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, currClock, TimeFormat)
 	for {
 		fileInfo, err := os.Stat(newFileName)
