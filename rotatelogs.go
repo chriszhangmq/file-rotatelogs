@@ -142,16 +142,10 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 	// to log to, which may be newer than rl.currentFilename
 	//baseFn := fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
 	baseFn := fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
-	//filename := baseFn
-	var filename string
-	var forceNewFile bool
-
-	if rl.curFn == "" {
-		rl.curFn = baseFn
-	}
-
-	fi, err := os.Stat(rl.curFn)
+	filename := baseFn
+	forceNewFile := false
 	sizeRotation := false
+	fi, err := os.Stat(rl.curFn)
 	//err != nil说明当前文件不存在
 	if err != nil {
 		//文件不存在
@@ -179,11 +173,32 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 	}
 	//需要创建新文件
 	if forceNewFile {
-		wait := sync.WaitGroup{}
-		wait.Add(1)
-		//按照天、文件大小来分割文件
-		filename = getNewFileName(rl.rotationSize, rl.clock, &wait)
-		wait.Wait()
+		if !sizeRotation {
+			//按照天来分割文件，获取新的文件名
+			var newFileName string
+			newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
+			if _, err := os.Stat(newFileName); err != nil {
+				filename = newFileName
+			}
+		} else {
+			//按照文件大小分割文件：获取新的文件名
+			newFileName := fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
+			for {
+				newFileName = fmt.Sprintf("%s.%d%s", newFileName, FileIndex, FileSuffix)
+				atomic.AddInt64(&FileIndex, 1)
+				fileInfo, err := os.Stat(newFileName)
+				if err != nil {
+					//文件不存在：创建新的文件
+					filename = newFileName
+					break
+				}
+				//文件存在：判断大小
+				if rl.rotationSize > 0 && rl.rotationSize > fileInfo.Size() {
+					filename = newFileName
+					break
+				}
+			}
+		}
 	}
 
 	fh, err := fileutil.CreateFile(filename)
@@ -723,7 +738,7 @@ func (rl *RotateLogs) Init() {
 }
 
 //获取新的文件名
-func getNewFileName(rotationSize int64, currClock Clock, wait *sync.WaitGroup) string {
+func getNewFileName(rotationSize int64, currClock Clock) string {
 	newFileName := fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, currClock, TimeFormat)
 	for {
 		fileInfo, err := os.Stat(newFileName)
@@ -738,6 +753,5 @@ func getNewFileName(rotationSize int64, currClock Clock, wait *sync.WaitGroup) s
 		newFileName = fmt.Sprintf("%s.%d%s", newFileName, FileIndex, FileSuffix)
 		atomic.AddInt64(&FileIndex, 1)
 	}
-	wait.Done()
 	return newFileName
 }
