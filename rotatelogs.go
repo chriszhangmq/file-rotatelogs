@@ -141,7 +141,7 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 	// This filename contains the name of the "NEW" filename
 	// to log to, which may be newer than rl.currentFilename
 	//baseFn := fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
-	baseFn := fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
+	baseFn := fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock)
 	filename := baseFn
 	var forceNewFile bool
 
@@ -157,7 +157,7 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		sizeRotation = true
 	} else if !sizeRotation {
 		//文件存在：判断当前文件是否为当天的文件
-		currTime := rl.ParseTimeFromFileName(TimeFormat, rl.curFn)
+		currTime := rl.ParseTimeFromFileName("2006-01-02", rl.curFn)
 		if !rl.isToday(currTime) {
 			forceNewFile = true
 		}
@@ -181,18 +181,19 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 			//按照天来分割文件，获取新的文件名
 			var newFileName string
 			//newFileName = fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
-			newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
+			newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock)
 			if _, err := os.Stat(newFileName); err != nil {
 				filename = newFileName
 			}
 		} else {
 			//按照文件大小分割文件：获取新的文件名
 			var newFileName string
+			var index int
 			for {
 				//newFileName = fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
-				newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
-				newFileName = fmt.Sprintf("%s.%d%s", newFileName, FileIndex, FileSuffix)
-				atomic.AddInt64(&FileIndex, 1)
+				newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock)
+				newFileName = fmt.Sprintf("%s.%d%s", newFileName, index, ".log")
+				index++
 				//filename = newFileName
 				fileInfo, err := os.Stat(newFileName)
 				if err != nil {
