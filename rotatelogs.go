@@ -176,7 +176,9 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 	//需要创建新文件
 	if forceNewFile {
 		//按照天、文件大小来分割文件
+		rl.mutex.Lock()
 		filename = getNewFileName(rl.rotationSize, rl.clock)
+		rl.mutex.Unlock()
 	}
 
 	fh, err := fileutil.CreateFile(filename)
