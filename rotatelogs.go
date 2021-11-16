@@ -575,10 +575,9 @@ func (rl *RotateLogs) deleteLockSymlinkFile() {
 	}
 	removeFiles := make([]string, 0, len(matches))
 	for _, path := range matches {
-		if !strings.HasSuffix(path, "_lock") || !strings.HasSuffix(path, "_symlink") {
-			continue
+		if strings.HasSuffix(path, "_lock") || strings.HasSuffix(path, "_symlink") {
+			removeFiles = append(removeFiles, path)
 		}
-		removeFiles = append(removeFiles, path)
 	}
 	for _, path := range removeFiles {
 		os.Remove(path)
