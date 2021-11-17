@@ -173,34 +173,17 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 	}
 	//需要创建新文件
 	if forceNewFile {
-		if !sizeRotation {
-			//按照天来分割文件，获取新的文件名
-			var newFileName string
-			newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
-			if err != nil {
-				filename = newFileName
-			}
-		} else {
-			//按照文件大小分割文件：获取新的文件名
-			var newFileName string
-			var index int
-			for {
-				newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
-				newFileName = fmt.Sprintf("%s.%d%s", newFileName, index, ".log")
-				index++
-				fileInfo, err := os.Stat(newFileName)
-				if err != nil {
-					//文件不存在：创建新的文件
-					filename = newFileName
-					break
-				}
-				//文件存在：判断大小
-				if rl.rotationSize > 0 && rl.rotationSize > fileInfo.Size() {
-					filename = newFileName
-					break
-				}
-			}
-		}
+		//if !sizeRotation {
+		//	//按照天来分割文件，获取新的文件名
+		//	var newFileName string
+		//	newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
+		//	if err != nil {
+		//		filename = newFileName
+		//	}
+		//} else {
+		//按照文件大小分割文件：获取新的文件名
+		filename = getNewFileName(rl.rotationSize, rl.clock)
+		//}
 	}
 
 	fh, err := fileutil.CreateFile(filename)
@@ -737,4 +720,23 @@ func (rl *RotateLogs) Init() {
 	rl.cronTask("0 0 1 * * ?")
 	rl.cronFunc()
 	rl.deleteLockSymlinkFile()
+}
+
+func getNewFileName(rotationSize int64, clock Clock) string {
+	var index int
+	var newFileName string
+	for {
+		newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, clock, TimeFormat)
+		newFileName = fmt.Sprintf("%s.%d%s", newFileName, index, ".log")
+		index++
+		fileInfo, err := os.Stat(newFileName)
+		if err != nil {
+			//文件不存在：创建新的文件
+			return newFileName
+		}
+		//文件存在：判断大小
+		if rotationSize > 0 && rotationSize > fileInfo.Size() {
+			return newFileName
+		}
+	}
 }
