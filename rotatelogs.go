@@ -2,6 +2,7 @@
 // (https://metacpan.org/release/File-RotateLogs), and it allows
 // you to automatically rotate output files when you write to them
 // according to the filename pattern that you can specify.
+// Chris fixes the bug. The current code concurrency is 20000
 package rotatelogs
 
 import (
