@@ -4,6 +4,7 @@
 // according to the filename pattern that you can specify.
 // Chris fixes the bug. The current code concurrency is 20000
 // Can be used as an alternative to the logrotate tool
+// Maintenance stopped on November 18, 2021
 package rotatelogs
 
 import (
