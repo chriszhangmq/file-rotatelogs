@@ -172,7 +172,10 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		//		forceNewFile = true
 		//	}
 		//}
-		if rl.isToday(parseCurrFileTime) {
+		//获取当前文件的时间
+		//parseCurrFileTime = rl.ParseTimeFromFileName(TimeFormat, rl.curFn)
+		parseCurrFileTimeStr = getTimeFromStr(rl.curFn)
+		if rl.isRotateByDay(parseCurrFileTimeStr) {
 			forceNewFile = true
 		}
 	}
@@ -184,8 +187,6 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 	if forceNewFile {
 		//按照天、文件大小分割文件：获取新的文件名
 		filename = getNewFileName(rl.rotationSize, rl.clock)
-		//获取当前文件的时间
-		parseCurrFileTime = rl.ParseTimeFromFileName(TimeFormat, rl.curFn)
 		//parseCurrFileTimeStr = getTimeFromStr(rl.curFn)
 	}
 
@@ -415,12 +416,17 @@ func (rl *RotateLogs) isToday(currTime time.Time) bool {
 	return false
 }
 
-func (rl *RotateLogs) isTodayByTimeStr(currTimeStr string) bool {
-	clockStr := rl.clock.Now().Format(TimeFormat)
-	if currTimeStr == clockStr {
-		return true
-	}
-	return false
+func (rl *RotateLogs) isRotateByDay(currTime string) bool {
+	now := rl.clock.Now()
+	diff := time.Duration(now.UnixNano()) % rl.rotationTime
+	t := now.Add(-1 * diff).Format(TimeFormat)
+	return currTime == t
+	//currYear, currMonth, currDay := currTime.Date()
+	//yYear, yMonth, yDay := t.Date()
+	//if currYear == yYear && currMonth == yMonth && currDay == yDay {
+	//	return true
+	//}
+	//return false
 }
 
 //
