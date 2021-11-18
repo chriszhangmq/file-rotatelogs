@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/chriszhangmq/file-rotatelogs/internal/common"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -97,11 +96,11 @@ func CreateFile(filename string) (*os.File, error) {
 	return fh, nil
 }
 
-func ParseTimeFromFileName(fileNameTimeFormat string, fileName string, clock time.Time) time.Time {
+func ParseTimeFromFileName(fileNameTimeFormat string, fileName string, clock time.Time) (time.Time, error) {
 	//正则表达式：获取时间字符串
 	fileNameTime := getTimeFromStr(fileName)
 	if len(fileNameTime) <= 0 || fileNameTime == common.IsNull {
-		return time.Time{}
+		return time.Time{}, errors.New("cannot resolve time")
 	}
 	//字符串转换为时间
 	var err error
@@ -113,9 +112,9 @@ func ParseTimeFromFileName(fileNameTimeFormat string, fileName string, clock tim
 		fileNameInTime, err = time.Parse(fileNameTimeFormat, fileNameTime)
 	}
 	if err != nil {
-		log.Fatal(err)
+		return fileNameInTime, err
 	}
-	return fileNameInTime
+	return fileNameInTime, nil
 }
 
 func getTimeFromStr(str string) string {

@@ -164,8 +164,10 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		sizeRotation = true
 	} else if !sizeRotation && rl.rotationTime > 0 {
 		//文件存在：判断当前文件是否需要按天的分割
-		currFileTime := fileutil.ParseTimeFromFileName(common.TimeFormat, rl.curFn, rl.clock.Now())
-		if timeutil.CompareTimeWithDay(rl.clock.Now().Add(-1*rl.rotationTime), currFileTime) {
+		currFileTime, err := fileutil.ParseTimeFromFileName(common.TimeFormat, rl.curFn, rl.clock.Now())
+		if err != nil {
+			forceNewFile = true
+		} else if timeutil.CompareTimeWithDay(rl.clock.Now().Add(-1*rl.rotationTime), currFileTime) {
 			forceNewFile = true
 		}
 	}
@@ -402,7 +404,10 @@ func (rl *RotateLogs) compressLogFiles() error {
 		if fl.Mode()&os.ModeSymlink == os.ModeSymlink {
 			continue
 		}
-		fiName2Time := fileutil.ParseTimeFromFileName(common.TimeFormat, fi.Name(), rl.clock.Now())
+		fiName2Time, err := fileutil.ParseTimeFromFileName(common.TimeFormat, fi.Name(), rl.clock.Now())
+		if err != nil {
+			continue
+		}
 		if fi.Name() != rl.curFn && !timeutil.IsToday(fiName2Time, rl.clock.Now()) {
 			files = append(files, fi.Name())
 		}
@@ -437,7 +442,10 @@ func (rl *RotateLogs) deleteFile() error {
 			continue
 		}
 		//按天数判断是否保留
-		fiName2Time := fileutil.ParseTimeFromFileName(common.TimeFormat, fi.Name(), rl.clock.Now())
+		fiName2Time, err := fileutil.ParseTimeFromFileName(common.TimeFormat, fi.Name(), rl.clock.Now())
+		if err != nil {
+			continue
+		}
 		if rl.maxAge > 0 && timeutil.IsMaxDay(cutoff, fiName2Time) {
 			removeFiles = append(removeFiles, path)
 		}
