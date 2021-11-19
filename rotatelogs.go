@@ -473,13 +473,7 @@ func getTimeFromStr(str string) string {
 func (rl *RotateLogs) IsNextDay(oldTime time.Time, newTime time.Time) bool {
 	oldYear, oldMonth, oldDay := oldTime.Date()
 	newYear, newMonth, newDay := newTime.Date()
-	if newYear > oldYear {
-		return true
-	}
-	if newMonth > oldMonth {
-		return true
-	}
-	if newDay > oldDay {
+	if newYear >= oldYear && newMonth >= oldMonth && newDay >= oldDay {
 		return true
 	}
 	return false
