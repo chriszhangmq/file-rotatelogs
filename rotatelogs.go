@@ -141,12 +141,11 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 	// This filename contains the name of the "NEW" filename
 	// to log to, which may be newer than rl.currentFilename
 	//baseFn := fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
-	baseFn := fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
-	filename := baseFn
-	var forceNewFile bool
-
-	fi, err := os.Stat(rl.curFn)
+	//baseFn := fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
+	filename := ""
+	forceNewFile := false
 	sizeRotation := false
+	fi, err := os.Stat(rl.curFn)
 	//err != nil说明当前文件不存在
 	if err != nil {
 		//文件不存在
@@ -168,22 +167,12 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 	}
 	//不需要分割
 	if !forceNewFile && !sizeRotation && !useGenerationalNames {
-		// nothing to do
 		return rl.outFh, nil
 	}
 	//需要创建新文件
 	if forceNewFile {
-		//if !sizeRotation {
-		//	//按照天来分割文件，获取新的文件名
-		//	var newFileName string
-		//	newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
-		//	if err != nil {
-		//		filename = newFileName
-		//	}
-		//} else {
-		//按照文件大小分割文件：获取新的文件名
+		//按照天、文件大小分割文件：获取新的文件名
 		filename = getNewFileName(rl.rotationSize, rl.clock)
-		//}
 	}
 
 	fh, err := fileutil.CreateFile(filename)
@@ -212,7 +201,7 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 
 	rl.outFh.Close()
 	rl.outFh = fh
-	rl.curBaseFn = baseFn
+	//rl.curBaseFn = baseFn
 	rl.curFn = filename
 	rl.generation = generation
 
@@ -690,7 +679,7 @@ func (rl *RotateLogs) deleteFile(dealFunc func(t time.Time, fileTime time.Time) 
 
 // 定时任务
 func (rl *RotateLogs) cronTask(cronTime string) {
-	cronObj := cron.New()
+	cronObj := cron.NewWithLocation(rl.clock.Now().Location())
 	err := cronObj.AddFunc(cronTime, rl.cronFunc)
 	if err != nil {
 		fmt.Println(err)
@@ -725,9 +714,19 @@ func (rl *RotateLogs) Init() {
 func getNewFileName(rotationSize int64, clock Clock) string {
 	var index int
 	var newFileName string
+	newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, clock, TimeFormat)
+	fileInfo, err := os.Stat(newFileName)
+	if err != nil {
+		//文件不存在：创建新的文件
+		return newFileName
+	}
+	//文件存在：判断大小
+	if rotationSize > 0 && rotationSize > fileInfo.Size() {
+		return newFileName
+	}
 	for {
 		newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, clock, TimeFormat)
-		newFileName = fmt.Sprintf("%s.%d%s", newFileName, index, ".log")
+		newFileName = fmt.Sprintf("%s.%d%s", newFileName, index, FileSuffix)
 		index++
 		fileInfo, err := os.Stat(newFileName)
 		if err != nil {
