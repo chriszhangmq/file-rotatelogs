@@ -560,10 +560,6 @@ func compressLogFile(src, dst string) (err error) {
 	return nil
 }
 
-func dir() string {
-	return filepath.Dir(l.filename())
-}
-
 func chown(_ string, _ os.FileInfo) error {
 	return nil
 }
