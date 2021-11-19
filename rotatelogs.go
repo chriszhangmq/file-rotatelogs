@@ -408,10 +408,7 @@ func (rl *RotateLogs) rotateNolock(filename string) error {
 		for _, path := range toUnlink {
 			os.Remove(path)
 		}
-	}()
-
-	//执行压缩命令
-	go func() {
+		//执行压缩命令
 		compressFunc(compressFiles)
 	}()
 
