@@ -499,10 +499,13 @@ func (rl *RotateLogs) isToday(currTime time.Time) bool {
 
 func compressFunc(compressFile []string) {
 	for _, f := range compressFile {
-		//fn := filepath.Join(dir(), f)
 		errCompress := compressLogFile(f, f+compressSuffix)
 		if errCompress != nil {
 			log.Println(errCompress)
+		} else {
+			if err := os.Remove(f); err != nil {
+				log.Println(err)
+			}
 		}
 	}
 }
