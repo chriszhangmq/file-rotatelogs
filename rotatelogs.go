@@ -401,6 +401,10 @@ func (rl *RotateLogs) rotateNolock(filename string) error {
 		return nil
 	}
 
+	go func() { //执行压缩
+		compressFunc(compressFiles)
+	}()
+
 	guard.Enable()
 	//执行删除文件
 	go func() {
@@ -408,8 +412,6 @@ func (rl *RotateLogs) rotateNolock(filename string) error {
 		for _, path := range toUnlink {
 			os.Remove(path)
 		}
-		//执行压缩
-		compressFunc(compressFiles)
 	}()
 
 	return nil
