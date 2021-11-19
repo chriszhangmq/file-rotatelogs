@@ -377,7 +377,7 @@ func (rl *RotateLogs) rotateNolock(filename string) error {
 		//按天数判断是否保留
 		if rl.maxAge > 0 && rl.IsNextDay(cutoff, fi.ModTime()) {
 			if fi.Name() != filename {
-				compressFiles = append(compressFiles, path)
+				compressFiles = append(compressFiles, fi.Name())
 			}
 			continue
 		}
@@ -496,7 +496,8 @@ func (rl *RotateLogs) isToday(currTime time.Time) bool {
 
 func compressFunc(compressFile []string) {
 	for _, f := range compressFile {
-		errCompress := compressLogFile(f, f+compressSuffix)
+		fn := filepath.Join(dir(), f)
+		errCompress := compressLogFile(fn, fn+compressSuffix)
 		if errCompress != nil {
 			log.Println(errCompress)
 		} else {
@@ -562,4 +563,16 @@ func compressLogFile(src, dst string) (err error) {
 
 func chown(_ string, _ os.FileInfo) error {
 	return nil
+}
+
+func dir() string {
+	return filepath.Dir(filename())
+}
+
+func filename() string {
+	if FilePath != "" {
+		return FilePath
+	}
+	name := filepath.Base(os.Args[0]) + "-lumberjack.log"
+	return filepath.Join(os.TempDir(), name)
 }
