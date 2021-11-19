@@ -5,6 +5,7 @@
 package rotatelogs
 
 import (
+	"compress/gzip"
 	"fmt"
 	"io"
 	"log"
@@ -22,10 +23,12 @@ import (
 
 const TimeFormat = "2006-01-02"
 const FileSuffix = ".log"
+const compressSuffix = ".gz"
 
 var (
 	FilePath string
 	FileName string
+	osStat   = os.Stat
 )
 
 func (c clockFn) Now() time.Time {
@@ -355,6 +358,7 @@ func (rl *RotateLogs) rotateNolock(filename string) error {
 
 	// the linter tells me to pre allocate this...
 	toUnlink := make([]string, 0, len(matches))
+	compressFiles := make([]string, 0, len(matches))
 	for _, path := range matches {
 		// Ignore lock files
 		if strings.HasSuffix(path, "_lock") || strings.HasSuffix(path, "_symlink") {
@@ -370,8 +374,11 @@ func (rl *RotateLogs) rotateNolock(filename string) error {
 		if err != nil {
 			continue
 		}
-
-		if rl.maxAge > 0 && fi.ModTime().After(cutoff) {
+		//按天数判断是否保留
+		if rl.maxAge > 0 && rl.IsNextDay(cutoff, fi.ModTime()) {
+			if fi.Name() != filename {
+				compressFiles = append(compressFiles, path)
+			}
 			continue
 		}
 
@@ -395,11 +402,17 @@ func (rl *RotateLogs) rotateNolock(filename string) error {
 	}
 
 	guard.Enable()
+	//执行删除文件
 	go func() {
 		// unlink files on a separate goroutine
 		for _, path := range toUnlink {
 			os.Remove(path)
 		}
+	}()
+
+	//执行压缩命令
+	go func() {
+		compressFunc(compressFiles)
 	}()
 
 	return nil
@@ -482,4 +495,75 @@ func (rl *RotateLogs) isToday(currTime time.Time) bool {
 		return true
 	}
 	return false
+}
+
+func compressFunc(compressFile []string) {
+	for _, f := range compressFile {
+		//fn := filepath.Join(dir(), f)
+		errCompress := compressLogFile(f, f+compressSuffix)
+		if errCompress != nil {
+			log.Println(errCompress)
+		}
+	}
+}
+
+func compressLogFile(src, dst string) (err error) {
+	f, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("failed to open log file: %v", err)
+	}
+	defer f.Close()
+
+	fi, err := osStat(src)
+	if err != nil {
+		return fmt.Errorf("failed to stat log file: %v", err)
+	}
+
+	if err := chown(dst, fi); err != nil {
+		return fmt.Errorf("failed to chown compressed log file: %v", err)
+	}
+
+	// If this file already exists, we presume it was created by
+	// a previous attempt to compress the log file.
+	gzf, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, fi.Mode())
+	if err != nil {
+		return fmt.Errorf("failed to open compressed log file: %v", err)
+	}
+	defer gzf.Close()
+
+	gz := gzip.NewWriter(gzf)
+
+	defer func() {
+		if err != nil {
+			os.Remove(dst)
+			err = fmt.Errorf("failed to compress log file: %v", err)
+		}
+	}()
+
+	if _, err := io.Copy(gz, f); err != nil {
+		return err
+	}
+	if err := gz.Close(); err != nil {
+		return err
+	}
+	if err := gzf.Close(); err != nil {
+		return err
+	}
+
+	if err := f.Close(); err != nil {
+		return err
+	}
+	if err := os.Remove(src); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func dir() string {
+	return filepath.Dir(l.filename())
+}
+
+func chown(_ string, _ os.FileInfo) error {
+	return nil
 }
