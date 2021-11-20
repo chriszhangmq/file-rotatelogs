@@ -9,12 +9,12 @@ import (
 const (
 	optkeyClock         = "clock"
 	optkeyHandler       = "handler"
-	optkeyLinkName      = "link-name"
 	optkeyMaxAge        = "max-age"
 	optkeyRotationTime  = "rotation-time"
 	optkeyRotationSize  = "rotation-size"
 	optkeyRotationCount = "rotation-count"
-	optkeyForceNewFile  = "force-new-file"
+	optkeyFilePath      = "file-path"
+	optkeyFileName      = "file-name"
 )
 
 // WithClock creates a new Option that sets a clock
@@ -44,26 +44,26 @@ func WithLocation(loc *time.Location) Option {
 // WithLinkName creates a new Option that sets the
 // symbolic link name that gets linked to the current
 // file name being used.
-func WithLinkName(s string) Option {
-	return option.New(optkeyLinkName, s)
-}
+//func WithLinkName(s string) Option {
+//	return option.New(optkeyLinkName, s)
+//}
 
 // WithMaxAge creates a new Option that sets the
 // max age of a log file before it gets purged from
 // the file system.
-func WithMaxAge(d time.Duration) Option {
+func WithMaxAge(d int) Option {
 	return option.New(optkeyMaxAge, d)
 }
 
 // WithRotationTime creates a new Option that sets the
 // time between rotation.
-func WithRotationTime(d time.Duration) Option {
+func WithRotationTime(d int) Option {
 	return option.New(optkeyRotationTime, d)
 }
 
 // WithRotationSize creates a new Option that sets the
 // log file size between rotation.
-func WithRotationSize(s int64) Option {
+func WithRotationSize(s int) Option {
 	return option.New(optkeyRotationSize, s)
 }
 
@@ -81,9 +81,10 @@ func WithHandler(h Handler) Option {
 	return option.New(optkeyHandler, h)
 }
 
-// ForceNewFile ensures a new file is created every time New()
-// is called. If the base file name already exists, an implicit
-// rotation is performed
-func ForceNewFile() Option {
-	return option.New(optkeyForceNewFile, true)
+func WithFilePath(s string) Option {
+	return option.New(optkeyFilePath, s)
+}
+
+func WithFileName(s string) Option {
+	return option.New(optkeyFileName, s)
 }
