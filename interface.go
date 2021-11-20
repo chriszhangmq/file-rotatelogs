@@ -48,6 +48,8 @@ type RotateLogs struct {
 	rotationSize   int64
 	rotationCount  uint
 	forceNewFile   bool
+	filePath       string
+	fileName       string
 }
 
 type fileNmeInfo struct {

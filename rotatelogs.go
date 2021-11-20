@@ -15,7 +15,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/chriszhangmq/file-rotatelogs/internal/fileutil"
@@ -31,9 +30,8 @@ const SymlinkSuffix = "_symlink"
 const Space = " "
 
 var (
-	FilePath  string
-	FileName  string
-	FileIndex int64
+	FilePath string
+	FileName string
 )
 
 func (c clockFn) Now() time.Time {
@@ -101,6 +99,9 @@ func New(options ...Option) (*RotateLogs, error) {
 		return nil, errors.Wrap(err, `invalid strftime pattern`)
 	}
 
+	FilePath = filePath
+	FileName = fileName
+
 	return &RotateLogs{
 		clock:          clock,
 		eventHandler:   handler,
@@ -111,6 +112,8 @@ func New(options ...Option) (*RotateLogs, error) {
 		rotationTime:   time.Duration(rotationTime*24) * time.Hour,
 		rotationSize:   rotationSize * 1024 * 1024,
 		rotationCount:  rotationCount,
+		fileName:       fileName,
+		filePath:       fileName,
 	}, nil
 }
 
@@ -609,7 +612,6 @@ func (rl *RotateLogs) cronFunc() {
 }
 
 func (rl *RotateLogs) Init() {
-	atomic.StoreInt64(&FileIndex, 1)
 	rl.cronTask("0 0 1 * * ?")
 	rl.cronFunc()
 	rl.deleteLockSymlinkFile()
