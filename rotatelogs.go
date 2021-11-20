@@ -26,6 +26,8 @@ import (
 const TimeFormat = "2006-01-02"
 const FileSuffix = ".log"
 const CompressSuffix = ".gz"
+const SymlinkSuffix = "_symlink"
+const LockSuffix = "_lock"
 
 var (
 	FilePath  string
@@ -54,8 +56,8 @@ func New(filePath string, fileName string, options ...Option) (*RotateLogs, erro
 		return nil, errors.Wrap(err, `invalid strftime pattern`)
 	}
 
-	var clock Clock = Local
 	rotationTime := 24 * time.Hour
+	var clock Clock = Local
 	var rotationSize int64
 	var rotationCount uint
 	var linkName string
@@ -99,7 +101,7 @@ func New(filePath string, fileName string, options ...Option) (*RotateLogs, erro
 
 	if maxAge == 0 && rotationCount == 0 {
 		// if both are 0, give maxAge a sane default
-		maxAge = 7 * 24 * time.Hour
+		maxAge = 30 * 24 * time.Hour
 	}
 
 	return &RotateLogs{
@@ -137,11 +139,6 @@ func (rl *RotateLogs) Write(p []byte) (n int, err error) {
 func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames bool) (io.Writer, error) {
 	generation := rl.generation
 	previousFn := rl.curFn
-
-	// This filename contains the name of the "NEW" filename
-	// to log to, which may be newer than rl.currentFilename
-	//baseFn := fileutil.GenerateFn(rl.pattern, rl.clock, rl.rotationTime)
-	//baseFn := fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, rl.clock, TimeFormat)
 	filename := ""
 	forceNewFile := false
 	sizeRotation := false
@@ -155,15 +152,11 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		forceNewFile = true
 		sizeRotation = true
 	} else if !sizeRotation {
-		//文件存在：判断当前文件是否为当天的文件
-		currTime := rl.ParseTimeFromFileName("2006-01-02", rl.curFn)
-		if !rl.isToday(currTime) {
+		//文件存在：判断当前文件是否需要按时间划分
+		currFileTime := rl.ParseTimeFromFileName("2006-01-02", rl.curFn)
+		if !rl.isRotateByTime(currFileTime) {
 			forceNewFile = true
 		}
-		//每次启动程序，新建文件
-		//if rl.forceNewFile{
-		//	forceNewFile = true
-		//}
 	}
 	//不需要分割
 	if !forceNewFile && !sizeRotation && !useGenerationalNames {
@@ -183,14 +176,7 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 	if err := rl.rotateNolock(filename); err != nil {
 		err = errors.Wrap(err, "failed to rotate")
 		if bailOnRotateFail {
-			// Failure to rotate is a problem, but it's really not a great
-			// idea to stop your application just because you couldn't rename
-			// your log.
-			//
-			// We only return this error when explicitly needed (as specified by bailOnRotateFail)
-			//
-			// However, we *NEED* to close `fh` here
-			if fh != nil { // probably can't happen, but being paranoid
+			if fh != nil {
 				fh.Close()
 			}
 
@@ -201,7 +187,6 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 
 	rl.outFh.Close()
 	rl.outFh = fh
-	//rl.curBaseFn = baseFn
 	rl.curFn = filename
 	rl.generation = generation
 
@@ -262,7 +247,7 @@ func (rl *RotateLogs) Rotate() error {
 }
 
 func (rl *RotateLogs) rotateNolock(filename string) error {
-	lockfn := filename + `_lock`
+	lockfn := filename + LockSuffix
 	fh, err := os.OpenFile(lockfn, os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
 		// Can't lock, just return
@@ -277,7 +262,7 @@ func (rl *RotateLogs) rotateNolock(filename string) error {
 	defer guard.Run()
 
 	if rl.linkName != "" {
-		tmpLinkName := filename + `_symlink`
+		tmpLinkName := filename + SymlinkSuffix
 
 		// Change how the link name is generated based on where the
 		// target location is. if the location is directly underneath
@@ -316,84 +301,6 @@ func (rl *RotateLogs) rotateNolock(filename string) error {
 	if rl.maxAge <= 0 && rl.rotationCount <= 0 {
 		return errors.New("panic: maxAge and rotationCount are both set")
 	}
-
-	//cutoff := rl.clock.Now().Add(-1 * rl.maxAge)
-
-	// the linter tells me to pre allocate this...
-
-	//compressFiles := make([]string, 0, len(matches))
-
-	//if rl.rotationCount > 0{
-	//	logFileInfos := []internal.LogInfo{}
-	//	matches, err := filepath.Glob(rl.globLogPattern)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	removeFile := make([]string, 0, len(matches))
-	//	for _, path := range matches {
-	//		fi, err := os.Stat(path)
-	//		if err != nil {
-	//			continue
-	//		}
-	//		fl, err := os.Lstat(path)
-	//		if err != nil {
-	//			continue
-	//		}
-	//		if fl.Mode()&os.ModeSymlink == os.ModeSymlink {
-	//			continue
-	//		}
-	//		// Ignore lock files
-	//		if strings.HasSuffix(path, "_lock") || strings.HasSuffix(path, "_symlink") {
-	//			continue
-	//		}
-	//		logFileInfos = append(logFileInfos, internal.LogInfo{fi.ModTime(), fi})
-	//	}
-	//	sort.Sort(ByFormatTime(logFileInfos))
-	//
-	//}
-
-	//////////////////// old
-	//for _, path := range matches {
-	//	// Ignore lock files
-	//	if strings.HasSuffix(path, "_lock") || strings.HasSuffix(path, "_symlink") {
-	//		continue
-	//	}
-	//
-	//	fi, err := os.Stat(path)
-	//	if err != nil {
-	//		continue
-	//	}
-	//
-	//	fl, err := os.Lstat(path)
-	//	if err != nil {
-	//		continue
-	//	}
-	//	//按天数判断是否保留
-	//	if rl.maxAge > 0 && !rl.IsMaxDay(cutoff, fi.ModTime()) {
-	//		atomic.StoreInt64(&FileIndex, 0)
-	//		if fi.Name() != filename {
-	//			compressFiles = append(compressFiles, fi.Name())
-	//		}
-	//		continue
-	//	} else if rl.rotationSize > 0 && fi.Size() >= rl.rotationSize {
-	//		compressFiles = append(compressFiles, fi.Name())
-	//		continue
-	//	}
-	//
-	//	if rl.rotationCount > 0 && fl.Mode()&os.ModeSymlink == os.ModeSymlink {
-	//		continue
-	//	}
-	//	toUnlink = append(toUnlink, path)
-	//}
-	//
-	//if rl.rotationCount > 0 {
-	//	// Only delete if we have more than rotationCount
-	//	if rl.rotationCount >= uint(len(toUnlink)) {
-	//		return nil
-	//	}
-	//
-	//	toUnlink = toUnlink[:len(toUnlink)-int(rl.rotationCount)]
-	//}
 
 	return nil
 }
@@ -470,6 +377,15 @@ func (rl *RotateLogs) isToday(currTime time.Time) bool {
 	return false
 }
 
+func (rl *RotateLogs) isRotateByTime(currTime time.Time) bool {
+	currYear, currMonth, currDay := currTime.Date()
+	todayYear, todayMonth, todayDay := rl.clock.Now().Add(-1 * rl.rotationTime).Date()
+	if currYear == todayYear && currMonth == todayMonth && currDay == todayDay {
+		return true
+	}
+	return false
+}
+
 func (rl *RotateLogs) fileIsNotToday(currTime time.Time, fileTime time.Time) bool {
 	fileYear, fileMonth, fileDay := fileTime.Date()
 	todayYear, todayMonth, todayDay := currTime.Date()
@@ -479,7 +395,7 @@ func (rl *RotateLogs) fileIsNotToday(currTime time.Time, fileTime time.Time) boo
 	return true
 }
 
-func compressFunc(compressFile []string) {
+func compress(compressFile []string) {
 	for _, f := range compressFile {
 		fn := filepath.Join(dir(), f)
 		errCompress := compressLogFile(fn, fn+CompressSuffix)
@@ -509,8 +425,6 @@ func compressLogFile(src, dst string) (err error) {
 		return fmt.Errorf("failed to chown compressed log file: %v", err)
 	}
 
-	// If this file already exists, we presume it was created by
-	// a previous attempt to compress the log file.
 	gzf, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, fi.Mode())
 	if err != nil {
 		return fmt.Errorf("failed to open compressed log file: %v", err)
@@ -558,7 +472,7 @@ func filename() string {
 	if FilePath != "" {
 		return FilePath
 	}
-	name := filepath.Base(os.Args[0]) + "-lumberjack.log"
+	name := filepath.Base(os.Args[0]) + FileSuffix
 	return filepath.Join(os.TempDir(), name)
 }
 
@@ -570,7 +484,7 @@ func (rl *RotateLogs) deleteLockSymlinkFile() {
 	}
 	removeFiles := make([]string, 0, len(matches))
 	for _, path := range matches {
-		if strings.HasSuffix(path, "_lock") || strings.HasSuffix(path, "_symlink") {
+		if strings.HasSuffix(path, LockSuffix) || strings.HasSuffix(path, SymlinkSuffix) {
 			removeFiles = append(removeFiles, path)
 		}
 	}
@@ -608,7 +522,7 @@ func (rl *RotateLogs) deleteSameLogFile() error {
 	return nil
 }
 
-//压缩日志文件
+//压缩日志文件：压缩非当天日志
 func (rl *RotateLogs) compressLogFiles() error {
 	matches, err := filepath.Glob(rl.globLogPattern)
 	if err != nil {
@@ -617,7 +531,7 @@ func (rl *RotateLogs) compressLogFiles() error {
 	files := make([]string, 0, len(matches))
 	for _, path := range matches {
 		// Ignore lock files
-		if strings.HasSuffix(path, "_lock") || strings.HasSuffix(path, "_symlink") || strings.HasSuffix(path, CompressSuffix) {
+		if strings.HasSuffix(path, LockSuffix) || strings.HasSuffix(path, SymlinkSuffix) || strings.HasSuffix(path, CompressSuffix) {
 			continue
 		}
 		fi, err := os.Stat(path)
@@ -636,12 +550,12 @@ func (rl *RotateLogs) compressLogFiles() error {
 			files = append(files, fi.Name())
 		}
 	}
-	compressFunc(files)
+	compress(files)
 	return nil
 }
 
 //删除文件: .log 、 .gz
-func (rl *RotateLogs) deleteFile(dealFunc func(t time.Time, fileTime time.Time) bool) error {
+func (rl *RotateLogs) deleteFile() error {
 	matches, err := filepath.Glob(rl.globLogPattern)
 	if err != nil {
 		return err
@@ -650,7 +564,7 @@ func (rl *RotateLogs) deleteFile(dealFunc func(t time.Time, fileTime time.Time) 
 	cutoff := rl.clock.Now().Add(-1 * rl.maxAge)
 	for _, path := range matches {
 		// Ignore lock files
-		if strings.HasSuffix(path, "_lock") || strings.HasSuffix(path, "_symlink") {
+		if strings.HasSuffix(path, LockSuffix) || strings.HasSuffix(path, SymlinkSuffix) {
 			continue
 		}
 
@@ -667,7 +581,7 @@ func (rl *RotateLogs) deleteFile(dealFunc func(t time.Time, fileTime time.Time) 
 		}
 		//按天数判断是否保留
 		fiName2Time := rl.ParseTimeFromFileName(TimeFormat, fi.Name())
-		if rl.maxAge > 0 && dealFunc(cutoff, fiName2Time) {
+		if rl.maxAge > 0 && rl.IsMaxDay(cutoff, fiName2Time) {
 			removeFiles = append(removeFiles, path)
 		}
 	}
@@ -690,7 +604,7 @@ func (rl *RotateLogs) cronTask(cronTime string) {
 func (rl *RotateLogs) cronFunc() {
 	go func() {
 		//删除过期文件
-		if err := rl.deleteFile(rl.IsMaxDay); err != nil {
+		if err := rl.deleteFile(); err != nil {
 			fmt.Println(err)
 		}
 		//删除之前解压的文件
