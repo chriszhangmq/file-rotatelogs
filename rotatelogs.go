@@ -26,6 +26,8 @@ import (
 const TimeFormat = "2006-01-02"
 const FileSuffix = ".log"
 const CompressSuffix = ".gz"
+const LockSuffix = "_lock"
+const SymlinkSuffix = "_symlink"
 
 var (
 	FilePath  string
@@ -262,7 +264,7 @@ func (rl *RotateLogs) Rotate() error {
 }
 
 func (rl *RotateLogs) rotateNolock(filename string) error {
-	lockfn := filename + `_lock`
+	lockfn := filename + LockSuffix
 	fh, err := os.OpenFile(lockfn, os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
 		// Can't lock, just return
@@ -277,7 +279,7 @@ func (rl *RotateLogs) rotateNolock(filename string) error {
 	defer guard.Run()
 
 	if rl.linkName != "" {
-		tmpLinkName := filename + `_symlink`
+		tmpLinkName := filename + SymlinkSuffix
 
 		// Change how the link name is generated based on where the
 		// target location is. if the location is directly underneath
@@ -570,7 +572,7 @@ func (rl *RotateLogs) deleteLockSymlinkFile() {
 	}
 	removeFiles := make([]string, 0, len(matches))
 	for _, path := range matches {
-		if strings.HasSuffix(path, "_lock") || strings.HasSuffix(path, "_symlink") {
+		if strings.HasSuffix(path, LockSuffix) || strings.HasSuffix(path, SymlinkSuffix) {
 			removeFiles = append(removeFiles, path)
 		}
 	}
@@ -617,7 +619,7 @@ func (rl *RotateLogs) compressLogFiles() error {
 	files := make([]string, 0, len(matches))
 	for _, path := range matches {
 		// Ignore lock files
-		if strings.HasSuffix(path, "_lock") || strings.HasSuffix(path, "_symlink") || strings.HasSuffix(path, CompressSuffix) {
+		if strings.HasSuffix(path, LockSuffix) || strings.HasSuffix(path, SymlinkSuffix) || strings.HasSuffix(path, CompressSuffix) {
 			continue
 		}
 		fi, err := os.Stat(path)
@@ -650,7 +652,7 @@ func (rl *RotateLogs) deleteFile(dealFunc func(t time.Time, fileTime time.Time) 
 	cutoff := rl.clock.Now().Add(-1 * rl.maxAge)
 	for _, path := range matches {
 		// Ignore lock files
-		if strings.HasSuffix(path, "_lock") || strings.HasSuffix(path, "_symlink") {
+		if strings.HasSuffix(path, LockSuffix) || strings.HasSuffix(path, SymlinkSuffix) {
 			continue
 		}
 
