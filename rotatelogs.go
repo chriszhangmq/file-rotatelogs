@@ -49,6 +49,7 @@ func New(options ...Option) (*RotateLogs, error) {
 	var handler Handler
 	var filePath string
 	var fileName string
+	var compressFile bool
 
 	for _, o := range options {
 		switch o.Name() {
@@ -77,6 +78,8 @@ func New(options ...Option) (*RotateLogs, error) {
 			filePath = o.Value().(string)
 		case optkeyFileName:
 			fileName = o.Value().(string)
+		case optkeyCompressFile:
+			compressFile = o.Value().(bool)
 		}
 	}
 
@@ -114,6 +117,7 @@ func New(options ...Option) (*RotateLogs, error) {
 		rotationCount:  rotationCount,
 		fileName:       fileName,
 		filePath:       fileName,
+		compressFile:   compressFile,
 	}, nil
 }
 
@@ -150,10 +154,10 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		//是否需要按照大小分割文件：文件存在，且文件大小超过设定阈值。
 		forceNewFile = true
 		sizeRotation = true
-	} else if !sizeRotation {
+	} else if !sizeRotation && rl.rotationTime > 0 {
 		//文件存在：判断当前文件是否为当天的文件
-		currTime := rl.ParseTimeFromFileName("2006-01-02", rl.curFn)
-		if !rl.isToday(currTime) {
+		currFileTime := rl.ParseTimeFromFileName("2006-01-02", rl.curFn)
+		if rl.CompareTimeWithDay(rl.clock.Now().Add(-1*rl.rotationTime), currFileTime) {
 			forceNewFile = true
 		}
 	}
@@ -360,7 +364,7 @@ func getTimeFromStr(str string) string {
 	return ""
 }
 
-func (rl *RotateLogs) IsMaxDay(cutOffTime time.Time, fileTime time.Time) bool {
+func (rl *RotateLogs) CompareTimeWithDay(cutOffTime time.Time, fileTime time.Time) bool {
 	cutOffDateString := cutOffTime.Format(TimeFormat)
 	cutOffDate, _ := time.Parse(TimeFormat, cutOffDateString)
 	fileDateString := fileTime.Format(TimeFormat)
@@ -597,7 +601,7 @@ func (rl *RotateLogs) cronTask(cronTime string) {
 func (rl *RotateLogs) cronFunc() {
 	go func() {
 		//删除过期文件
-		if err := rl.deleteFile(rl.IsMaxDay); err != nil {
+		if err := rl.deleteFile(rl.CompareTimeWithDay); err != nil {
 			fmt.Println(err)
 		}
 		//删除之前解压的文件
@@ -605,8 +609,10 @@ func (rl *RotateLogs) cronFunc() {
 			fmt.Println(err)
 		}
 		//压缩非当天文件
-		if err := rl.compressLogFiles(); err != nil {
-			fmt.Println(err)
+		if rl.compressFile {
+			if err := rl.compressLogFiles(); err != nil {
+				fmt.Println(err)
+			}
 		}
 	}()
 }

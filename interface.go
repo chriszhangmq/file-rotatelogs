@@ -50,6 +50,7 @@ type RotateLogs struct {
 	forceNewFile   bool
 	filePath       string
 	fileName       string
+	compressFile   bool
 }
 
 type fileNmeInfo struct {

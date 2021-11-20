@@ -15,6 +15,7 @@ const (
 	optkeyRotationCount = "rotation-count"
 	optkeyFilePath      = "file-path"
 	optkeyFileName      = "file-name"
+	optkeyCompressFile  = "compress-file"
 )
 
 // WithClock creates a new Option that sets a clock
@@ -87,4 +88,8 @@ func WithFilePath(s string) Option {
 
 func WithFileName(s string) Option {
 	return option.New(optkeyFileName, s)
+}
+
+func CompressFile() Option {
+	return option.New(optkeyCompressFile, true)
 }
