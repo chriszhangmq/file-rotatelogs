@@ -161,10 +161,10 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		sizeRotation = true
 	} else if !sizeRotation && rl.rotationTime > 0 {
 		//文件存在：判断当前文件是否需要按天的分割
-		//currFileTime := rl.ParseTimeFromFileName(TimeFormat, rl.curFn)
-		//if rl.CompareTimeWithDay(rl.clock.Now().Add(-1*rl.rotationTime), parseCurrFileTime) {
-		//	forceNewFile = true
-		//}
+		currFileTime := rl.ParseTimeFromFileName(TimeFormat, rl.curFn)
+		if rl.CompareTimeWithDay(rl.clock.Now().Add(-1*rl.rotationTime), currFileTime) {
+			forceNewFile = true
+		}
 		//if !rl.isTodayByTimeStr(parseCurrFileTimeStr) {
 		//	CountDay++
 		//	if CountDay >= (int)(rl.rotationTime/24*time.Hour) {
@@ -174,10 +174,10 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		//}
 		//获取当前文件的时间
 		//parseCurrFileTime = rl.ParseTimeFromFileName(TimeFormat, rl.curFn)
-		parseCurrFileTimeStr = getTimeFromStr(rl.curFn)
-		if rl.isRotateByDay(parseCurrFileTimeStr) {
-			forceNewFile = true
-		}
+		//parseCurrFileTimeStr = getTimeFromStr(rl.curFn)
+		//if rl.isRotateByDay(parseCurrFileTimeStr) {
+		//	forceNewFile = true
+		//}
 	}
 	//不需要分割
 	if !forceNewFile && !sizeRotation && !useGenerationalNames {
