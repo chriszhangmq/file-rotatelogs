@@ -51,6 +51,7 @@ type RotateLogs struct {
 	filePath       string
 	fileName       string
 	compressFile   bool
+	cronTime       string
 }
 
 // Clock is the interface used by the RotateLogs

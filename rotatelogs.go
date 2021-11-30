@@ -31,11 +31,8 @@ const Space = " "
 const IsNull = ""
 
 var (
-	FilePath             string
-	FileName             string
-	parseCurrFileTime    time.Time
-	parseCurrFileTimeStr string
-	CountDay             int
+	FilePath string
+	FileName string
 )
 
 func (c clockFn) Now() time.Time {
@@ -54,6 +51,7 @@ func New(options ...Option) (*RotateLogs, error) {
 	var filePath string
 	var fileName string
 	var compressFile bool
+	var cronTime string
 
 	for _, o := range options {
 		switch o.Name() {
@@ -84,6 +82,8 @@ func New(options ...Option) (*RotateLogs, error) {
 			fileName = o.Value().(string)
 		case optkeyCompressFile:
 			compressFile = o.Value().(bool)
+		case optkeyCronTime:
+			cronTime = o.Value().(string)
 		}
 	}
 
@@ -108,7 +108,6 @@ func New(options ...Option) (*RotateLogs, error) {
 
 	FilePath = filePath
 	FileName = fileName
-	CountDay = 0
 
 	return &RotateLogs{
 		clock:          clock,
@@ -123,6 +122,7 @@ func New(options ...Option) (*RotateLogs, error) {
 		fileName:       fileName,
 		filePath:       fileName,
 		compressFile:   compressFile,
+		cronTime:       cronTime,
 	}, nil
 }
 
@@ -195,7 +195,6 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 
 	rl.outFh.Close()
 	rl.outFh = fh
-	//rl.curBaseFn = baseFn
 	rl.curFn = filename
 	rl.generation = generation
 
@@ -342,15 +341,6 @@ func (rl *RotateLogs) ParseTimeFromFileName(fileNameTimeFormat string, fileName 
 	return fileNameInTime
 }
 
-func (rl *RotateLogs) ParseTimeStrFromFileName(fileName string) string {
-	//正则表达式：获取时间字符串
-	fileNameTimeStr := getTimeFromStr(fileName)
-	if len(fileNameTimeStr) <= 0 || fileNameTimeStr == IsNull {
-		return IsNull
-	}
-	return fileNameTimeStr
-}
-
 func (rl *RotateLogs) changeFileNameByTime(fileNameTimeFormat string, lastTime string) time.Time {
 	var newFileTime time.Time
 	var err error
@@ -386,7 +376,6 @@ func (rl *RotateLogs) isMaxDay(cutOffTime time.Time, fileTime time.Time) bool {
 	return fileDate.Before(cutOffDate)
 }
 
-////////////////////////////////////
 func (rl *RotateLogs) CompareTimeWithDay(cutOffTime time.Time, fileTime time.Time) bool {
 	cutOffDateString := cutOffTime.Format(TimeFormat)
 	cutOffDate, _ := time.Parse(TimeFormat, cutOffDateString)
@@ -534,6 +523,35 @@ func (rl *RotateLogs) deleteLockSymlinkFile() {
 	}
 }
 
+func getNewFileName(rotationSize int64, clock Clock) string {
+	index := 1
+	newFileName := IsNull
+	newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, clock, TimeFormat)
+	fileInfo, err := os.Stat(newFileName)
+	if err != nil {
+		//文件不存在：创建新的文件
+		return newFileName
+	}
+	//文件存在：判断大小
+	if rotationSize > 0 && rotationSize > fileInfo.Size() {
+		return newFileName
+	}
+	for {
+		newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, clock, TimeFormat)
+		newFileName = fmt.Sprintf("%s.%d%s", newFileName, index, FileSuffix)
+		index++
+		fileInfo, err := os.Stat(newFileName)
+		if err != nil {
+			//文件不存在：创建新的文件
+			return newFileName
+		}
+		//文件存在：判断大小
+		if rotationSize > 0 && rotationSize > fileInfo.Size() {
+			return newFileName
+		}
+	}
+}
+
 //清除已被压缩的.log文件
 func (rl *RotateLogs) deleteSameLogFile() error {
 	matches, err := filepath.Glob(rl.globLogPattern)
@@ -587,9 +605,7 @@ func (rl *RotateLogs) compressLogFiles() error {
 			continue
 		}
 		fiName2Time := rl.ParseTimeFromFileName(TimeFormat, fi.Name())
-		//fiName2Time := rl.ParseTimeStrFromFileName(fi.Name())
 		if fi.Name() != rl.curFn && !rl.isToday(fiName2Time) {
-			//if fi.Name() != rl.curFn && !rl.isTodayByTimeStr(fiName2Time) {
 			files = append(files, fi.Name())
 		}
 	}
@@ -666,36 +682,9 @@ func (rl *RotateLogs) cronFunc() {
 }
 
 func (rl *RotateLogs) Init() {
-	rl.cronTask("0 0 1 * * ?")
+	if rl.cronTime != IsNull {
+		rl.cronTask(rl.cronTime)
+	}
 	rl.cronFunc()
 	rl.deleteLockSymlinkFile()
-}
-
-func getNewFileName(rotationSize int64, clock Clock) string {
-	index := 1
-	newFileName := IsNull
-	newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, clock, TimeFormat)
-	fileInfo, err := os.Stat(newFileName)
-	if err != nil {
-		//文件不存在：创建新的文件
-		return newFileName
-	}
-	//文件存在：判断大小
-	if rotationSize > 0 && rotationSize > fileInfo.Size() {
-		return newFileName
-	}
-	for {
-		newFileName = fileutil.GenerateFileNme(FilePath, FileName, FileSuffix, clock, TimeFormat)
-		newFileName = fmt.Sprintf("%s.%d%s", newFileName, index, FileSuffix)
-		index++
-		fileInfo, err := os.Stat(newFileName)
-		if err != nil {
-			//文件不存在：创建新的文件
-			return newFileName
-		}
-		//文件存在：判断大小
-		if rotationSize > 0 && rotationSize > fileInfo.Size() {
-			return newFileName
-		}
-	}
 }

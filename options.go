@@ -16,6 +16,7 @@ const (
 	optkeyFilePath      = "file-path"
 	optkeyFileName      = "file-name"
 	optkeyCompressFile  = "compress-file"
+	optkeyCronTime      = "cron-time"
 )
 
 // WithClock creates a new Option that sets a clock
@@ -92,4 +93,8 @@ func WithFileName(fileName string) Option {
 
 func WithCompressFile(needCompress bool) Option {
 	return option.New(optkeyCompressFile, needCompress)
+}
+
+func WithCronTime(cronTime string) Option {
+	return option.New(optkeyCronTime, cronTime)
 }
