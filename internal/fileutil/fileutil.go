@@ -235,7 +235,11 @@ func GetNewFileName(filePath string, fileName string, rotationSize int64, clock 
 	index := 1
 	newFileName := ""
 	newFileNameWithPath := common.IsNull
+	//生成文件名
 	newFileNameWithPath, newFileName = GenerateFileNme(filePath, fileName, clock, common.TimeFormat)
+	//添加后缀
+	newFileNameWithPath = fmt.Sprintf("%s%s", newFileNameWithPath, common.FileSuffix)
+	newFileName = fmt.Sprintf("%s%s", newFileName, common.FileSuffix)
 	fileInfo, err := os.Stat(newFileNameWithPath)
 	if err != nil {
 		//文件不存在且该文件的压缩文件也不存在：创建新的文件
@@ -255,7 +259,9 @@ func GetNewFileName(filePath string, fileName string, rotationSize int64, clock 
 		}
 	}
 	for {
+		//生成文件名
 		newFileNameWithPath, newFileName = GenerateFileNme(filePath, fileName, clock, common.TimeFormat)
+		//添加后缀
 		newFileNameWithPath = fmt.Sprintf("%s.%d%s", newFileNameWithPath, index, common.FileSuffix)
 		newFileName = fmt.Sprintf("%s.%d%s", newFileName, index, common.FileSuffix)
 		index++
