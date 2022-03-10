@@ -248,9 +248,9 @@ func GetNewFileName(filePath string, fileName string, rotationSize int64, clock 
 		}
 	}
 	//文件存在：不按照大小划分
-	if rotationSize <= 0 {
-		return newFileNameWithPath, newFileName
-	}
+	//if rotationSize <= 0 {
+	//	return newFileNameWithPath, newFileName
+	//}
 	//文件存在：需要按照大小划分
 	if rotationSize > 0 {
 		//仅当文件存在时，判断文件大小是否满足大小限制。
@@ -279,4 +279,8 @@ func GetNewFileName(filePath string, fileName string, rotationSize int64, clock 
 			return newFileNameWithPath, newFileName
 		}
 	}
+}
+
+func createNewFileName() {
+
 }
