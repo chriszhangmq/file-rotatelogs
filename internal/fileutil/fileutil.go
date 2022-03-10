@@ -262,7 +262,7 @@ func GetNewFileName(filePath string, fileName string, rotationSize int64, clock 
 		if err != nil {
 			//文件不存在且该文件的压缩文件也不存在：创建新的文件
 			if _, err := os.Stat(newFileNameWithPath + common.CompressSuffix); err != nil {
-				return newFileNameWithPath
+				return newFileNameWithPath, newFileName
 			} else {
 				continue
 			}
