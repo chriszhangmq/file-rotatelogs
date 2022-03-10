@@ -253,8 +253,8 @@ func GetNewFileName(filePath string, fileName string, rotationSize int64, clock 
 		}
 	}
 	for {
-		newFileName = GenerateFileNme(filePath, fileName, common.FileSuffix, clock, common.TimeFormat)
-		newFileName = fmt.Sprintf("%s.%d%s", newFileName, index, common.FileSuffix)
+		newFileName = fmt.Sprintf("%s.%d", fileName, index)
+		newFileName = GenerateFileNme(filePath, newFileName, common.FileSuffix, clock, common.TimeFormat)
 		index++
 		fileInfo, err := os.Stat(newFileName)
 		if err != nil {
