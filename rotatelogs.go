@@ -199,12 +199,6 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 	}
 
 	rl.outFh.Close()
-	//压缩旧文件
-	if forceNewFile && rl.compressFile {
-		//go func() {
-		rl.compressLogFile(rl.curFn)
-		//}()
-	}
 	rl.outFh = fh
 	rl.curFn = filename
 	rl.generation = generation
@@ -415,13 +409,16 @@ func (rl *RotateLogs) compressLogFiles() error {
 		if fl.Mode()&os.ModeSymlink == os.ModeSymlink {
 			continue
 		}
-		fiName2Time, err := fileutil.ParseTimeFromFileName(common.TimeFormat, fi.Name(), rl.clock.Now())
-		if err != nil {
-			continue
-		}
-		if fi.Name() != rl.curFn && !timeutil.IsToday(fiName2Time, rl.clock.Now()) {
+		if fi.Name() != rl.curFn {
 			files = append(files, fi.Name())
 		}
+		//fiName2Time, err := fileutil.ParseTimeFromFileName(common.TimeFormat, fi.Name(), rl.clock.Now())
+		//if err != nil {
+		//	continue
+		//}
+		//if fi.Name() != rl.curFn && !timeutil.IsToday(fiName2Time, rl.clock.Now()) {
+		//	files = append(files, fi.Name())
+		//}
 	}
 	fileutil.CompressLogFiles(files, rl.filePath)
 	return nil
