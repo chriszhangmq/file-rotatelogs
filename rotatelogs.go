@@ -200,9 +200,11 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 
 	rl.outFh.Close()
 	//压缩旧文件
-	go func() {
-		rl.compressLogFiles()
-	}()
+	if rl.compressFile {
+		go func() {
+			rl.compressLogFile(rl.curFn)
+		}()
+	}
 	rl.outFh = fh
 	rl.curFn = filename
 	rl.generation = generation
@@ -383,6 +385,11 @@ func (rl *RotateLogs) deleteSameLogFile() error {
 		os.Remove(path)
 	}
 	return nil
+}
+
+//压缩单个日志文件
+func (rl *RotateLogs) compressLogFile(fileName string) {
+	fileutil.CompressLogFiles([]string{fileName}, rl.filePath)
 }
 
 //压缩日志文件
