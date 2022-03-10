@@ -153,10 +153,28 @@ func (rl *RotateLogs) Write(p []byte) (n int, err error) {
 }
 
 func (rl *RotateLogs) getWriteNoRotate() (io.Writer, error) {
+	generation := rl.generation
+	previousFn := rl.curFn
 	fileName := fileutil.GenerateFileNmeNoTime(rl.filePath, rl.fileName, common.FileSuffix)
 	fh, err := fileutil.CreateFile(fileName)
 	if err != nil {
 		return nil, errors.Wrapf(err, `failed to create a new file %v`, fileName)
+	}
+	if err := rl.rotateNoTime(fileName); err != nil {
+		err = errors.Wrap(err, "failed to rotate")
+		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+	}
+
+	rl.outFh.Close()
+	rl.outFh = fh
+	rl.curFn = fileName
+	rl.generation = generation
+
+	if h := rl.eventHandler; h != nil {
+		go h.Handle(&FileRotatedEvent{
+			prev:    previousFn,
+			current: fileName,
+		})
 	}
 	return fh, nil
 }
@@ -272,6 +290,23 @@ func (rl *RotateLogs) Rotate() error {
 	_, err := rl.getWriterNolock(true, true)
 
 	return err
+}
+
+func (rl *RotateLogs) rotateNoTime(filename string) error {
+	lockfn := filename + common.LockSuffix
+	fh, err := os.OpenFile(lockfn, os.O_CREATE|os.O_EXCL, 0644)
+	if err != nil {
+		// Can't lock, just return
+		return err
+	}
+
+	var guard cleanupGuard
+	guard.fn = func() {
+		fh.Close()
+		os.Remove(lockfn)
+	}
+	defer guard.Run()
+	return nil
 }
 
 func (rl *RotateLogs) rotateNolock(filename string) error {
