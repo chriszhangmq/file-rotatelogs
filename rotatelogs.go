@@ -497,7 +497,7 @@ func (rl *RotateLogs) Init() {
 	if rl.cronTime != common.IsNull {
 		rl.cronTask(rl.cronTime)
 		//第一次启动代码，直接进行一次压缩、清除
-		rl.cronFunc()
+		//rl.cronFunc()
 	}
 	rl.deleteLockSymlinkFile()
 }
