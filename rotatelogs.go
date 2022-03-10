@@ -411,13 +411,16 @@ func (rl *RotateLogs) compressLogFiles() error {
 		if fl.Mode()&os.ModeSymlink == os.ModeSymlink {
 			continue
 		}
-		fiName2Time, err := fileutil.ParseTimeFromFileName(common.TimeFormat, fi.Name(), rl.clock.Now())
-		if err != nil {
-			continue
-		}
-		if fi.Name() != rl.currentFileName && !timeutil.IsToday(fiName2Time, rl.clock.Now()) {
+		if fi.Name() != rl.currentFileName {
 			files = append(files, fi.Name())
 		}
+		//fiName2Time, err := fileutil.ParseTimeFromFileName(common.TimeFormat, fi.Name(), rl.clock.Now())
+		//if err != nil {
+		//	continue
+		//}
+		//if fi.Name() != rl.currentFileName && !timeutil.IsToday(fiName2Time, rl.clock.Now()) {
+		//	files = append(files, fi.Name())
+		//}
 	}
 	fileutil.CompressLogFiles(files, rl.filePath)
 	return nil
