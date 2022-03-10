@@ -48,6 +48,12 @@ func GenerateFn(pattern *strftime.Strftime, clock interface{ Now() time.Time }, 
 }
 
 //产生新的文件名（用于按大小分割文件）
+func GenerateFileNmeNoTime(path string, name string, suffix string) string {
+	fileName := fmt.Sprintf("%s%s%s", path, name, suffix)
+	return fileName
+}
+
+//产生新的文件名（用于按大小分割文件）
 func GenerateFileNme(path string, name string, suffix string, clock interface{ Now() time.Time }, timeFormat string) string {
 	now := clock.Now()
 

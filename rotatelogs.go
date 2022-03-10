@@ -137,13 +137,28 @@ func (rl *RotateLogs) Write(p []byte) (n int, err error) {
 	// Guard against concurrent writes
 	rl.mutex.Lock()
 	defer rl.mutex.Unlock()
+	var out io.Writer
+	//不用日志切割
+	if rl.maxAge == 0 && rl.rotationTime == 0 && rl.rotationSize == 0 {
+		out, err = rl.getWriteNoRotate()
+	} else {
+		out, err = rl.getWriterNolock(false, false)
+	}
 
-	out, err := rl.getWriterNolock(false, false)
 	if err != nil {
 		return 0, errors.Wrap(err, `failed to acquite target io.Writer`)
 	}
 
 	return out.Write(p)
+}
+
+func (rl *RotateLogs) getWriteNoRotate() (io.Writer, error) {
+	fileName := fileutil.GenerateFileNmeNoTime(rl.filePath, rl.fileName, common.FileSuffix)
+	fh, err := fileutil.CreateFile(fileName)
+	if err != nil {
+		return nil, errors.Wrapf(err, `failed to create a new file %v`, fileName)
+	}
+	return fh, nil
 }
 
 // must be locked during this operation
