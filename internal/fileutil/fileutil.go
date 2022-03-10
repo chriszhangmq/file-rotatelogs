@@ -246,8 +246,11 @@ func GetNewFileName(filePath string, fileName string, rotationSize int64, clock 
 		return newFileName
 	}
 	//文件存在：需要按照大小划分
-	if rotationSize > 0 && rotationSize > fileInfo.Size() {
-		return newFileName
+	if rotationSize > 0 {
+		//仅当文件存在时，判断文件大小是否满足大小限制。
+		if fileInfo, err = os.Stat(newFileName); err == nil && (rotationSize > fileInfo.Size()) {
+			return newFileName
+		}
 	}
 	for {
 		newFileName = GenerateFileNme(filePath, fileName, common.FileSuffix, clock, common.TimeFormat)
