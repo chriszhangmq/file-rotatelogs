@@ -389,7 +389,7 @@ func (rl *RotateLogs) deleteSameLogFile() error {
 
 //压缩单个日志文件
 func (rl *RotateLogs) compressLogFile(fileName string) {
-	fileutil.CompressLogFiles([]string{fileName}, rl.filePath)
+	fileutil.CompressLogFile(fileName)
 }
 
 //压缩日志文件

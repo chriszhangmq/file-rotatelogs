@@ -145,6 +145,22 @@ func CompressLogFiles(compressFile []string, filePath string) {
 	}
 }
 
+func CompressLogFile(fileName string) {
+	//The destination compressed file does not exist
+	if _, err := os.Stat(fileName); err != nil {
+		return
+	}
+	//Compressed file already exists
+	if _, err := os.Stat(fileName + common.CompressSuffix); err == nil {
+		return
+	}
+	errCompress := compressLogFile(fileName, fileName+common.CompressSuffix)
+	//Delete after successful compression
+	if _, err := os.Stat(fileName + common.CompressSuffix); err == nil && errCompress == nil {
+		os.Remove(fileName)
+	}
+}
+
 func compressLogFile(src, dst string) (err error) {
 	f, err := os.Open(src)
 	if err != nil {
