@@ -200,7 +200,7 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 
 	rl.outFh.Close()
 	//压缩旧文件
-	if rl.compressFile {
+	if forceNewFile && rl.compressFile {
 		go func() {
 			rl.compressLogFile(rl.curFn)
 		}()
