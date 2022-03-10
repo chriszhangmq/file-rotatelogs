@@ -48,7 +48,7 @@ func GenerateFn(pattern *strftime.Strftime, clock interface{ Now() time.Time }, 
 }
 
 //产生新的文件名（用于按大小分割文件）
-func GenerateFileNme(path string, name string, suffix string, clock interface{ Now() time.Time }, timeFormat string) string {
+func GenerateFileNme(path string, name string, suffix string, clock interface{ Now() time.Time }, timeFormat string) (string, string) {
 	now := clock.Now()
 
 	var base time.Time
@@ -60,8 +60,9 @@ func GenerateFileNme(path string, name string, suffix string, clock interface{ N
 
 	//拼接文件名
 	date := fmt.Sprintf("%s", base.Format(timeFormat))
-	fileName := fmt.Sprintf("%s%s-%s%s", path, name, date, suffix)
-	return fileName
+	fileName := fmt.Sprintf("%s-%s%s", name, date, suffix)
+	fileNameWhitPath := fmt.Sprintf("%s%s", path, fileName)
+	return fileNameWhitPath, fileName
 }
 
 //产生新的文件名（用于按大小分割文件）
@@ -230,44 +231,45 @@ func filename(filePath string) string {
 	return filepath.Join(os.TempDir(), name)
 }
 
-func GetNewFileName(filePath string, fileName string, rotationSize int64, clock interface{ Now() time.Time }) string {
+func GetNewFileName(filePath string, fileName string, rotationSize int64, clock interface{ Now() time.Time }) (string, string) {
 	index := 1
-	newFileName := common.IsNull
-	newFileName = GenerateFileNme(filePath, fileName, common.FileSuffix, clock, common.TimeFormat)
-	fileInfo, err := os.Stat(newFileName)
+	newFileName := ""
+	newFileNameWithPath := common.IsNull
+	newFileNameWithPath, newFileName = GenerateFileNme(filePath, fileName, common.FileSuffix, clock, common.TimeFormat)
+	fileInfo, err := os.Stat(newFileNameWithPath)
 	if err != nil {
 		//文件不存在且该文件的压缩文件也不存在：创建新的文件
-		if _, err := os.Stat(newFileName + common.CompressSuffix); err != nil {
-			return newFileName
+		if _, err := os.Stat(newFileNameWithPath + common.CompressSuffix); err != nil {
+			return newFileNameWithPath, newFileName
 		}
 	}
 	//文件存在：不按照大小划分
 	if rotationSize <= 0 {
-		return newFileName
+		return newFileNameWithPath, newFileName
 	}
 	//文件存在：需要按照大小划分
 	if rotationSize > 0 {
 		//仅当文件存在时，判断文件大小是否满足大小限制。
-		if fileInfo, err = os.Stat(newFileName); err == nil && (rotationSize > fileInfo.Size()) {
-			return newFileName
+		if fileInfo, err = os.Stat(newFileNameWithPath); err == nil && (rotationSize > fileInfo.Size()) {
+			return newFileNameWithPath, newFileName
 		}
 	}
 	for {
-		newFileName = GenerateFileNme(filePath, fileName, common.FileSuffix, clock, common.TimeFormat)
-		newFileName = fmt.Sprintf("%s.%d", newFileName, index)
+		newFileNameWithPath, newFileName = GenerateFileNme(filePath, fileName, common.FileSuffix, clock, common.TimeFormat)
+		newFileNameWithPath = fmt.Sprintf("%s.%d", newFileNameWithPath, index)
 		index++
-		fileInfo, err := os.Stat(newFileName)
+		fileInfo, err := os.Stat(newFileNameWithPath)
 		if err != nil {
 			//文件不存在且该文件的压缩文件也不存在：创建新的文件
-			if _, err := os.Stat(newFileName + common.CompressSuffix); err != nil {
-				return newFileName
+			if _, err := os.Stat(newFileNameWithPath + common.CompressSuffix); err != nil {
+				return newFileNameWithPath
 			} else {
 				continue
 			}
 		}
 		//文件存在：判断大小
 		if rotationSize > 0 && rotationSize > fileInfo.Size() {
-			return newFileName
+			return newFileNameWithPath, newFileName
 		}
 	}
 }

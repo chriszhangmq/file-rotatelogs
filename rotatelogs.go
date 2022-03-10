@@ -150,7 +150,8 @@ func (rl *RotateLogs) Write(p []byte) (n int, err error) {
 func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames bool) (io.Writer, error) {
 	generation := rl.generation
 	previousFn := rl.curFn
-	filename := common.IsNull
+	fileNameWithPath := common.IsNull
+	fileName := ""
 	forceNewFile := false
 	sizeRotation := false
 	fi, err := os.Stat(rl.curFn)
@@ -178,15 +179,15 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 	//需要创建新文件
 	if forceNewFile {
 		//按照天、文件大小分割文件：获取新的文件名
-		filename = fileutil.GetNewFileName(rl.filePath, rl.fileName, rl.rotationSize, rl.clock)
+		fileNameWithPath, fileName = fileutil.GetNewFileName(rl.filePath, rl.fileName, rl.rotationSize, rl.clock)
 	}
 
-	fh, err := fileutil.CreateFile(filename)
+	fh, err := fileutil.CreateFile(fileNameWithPath)
 	if err != nil {
-		return nil, errors.Wrapf(err, `failed to create a new file %v`, filename)
+		return nil, errors.Wrapf(err, `failed to create a new file %v`, fileNameWithPath)
 	}
 
-	if err := rl.rotateNolock(filename); err != nil {
+	if err := rl.rotateNolock(fileNameWithPath); err != nil {
 		err = errors.Wrap(err, "failed to rotate")
 		if bailOnRotateFail {
 			if fh != nil { // probably can't happen, but being paranoid
@@ -200,13 +201,14 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 
 	rl.outFh.Close()
 	rl.outFh = fh
-	rl.curFn = filename
+	rl.curFn = fileNameWithPath
+	rl.currentFileName = fileName
 	rl.generation = generation
 
 	if h := rl.eventHandler; h != nil {
 		go h.Handle(&FileRotatedEvent{
 			prev:    previousFn,
-			current: filename,
+			current: fileNameWithPath,
 		})
 	}
 
@@ -409,11 +411,11 @@ func (rl *RotateLogs) compressLogFiles() error {
 		if fl.Mode()&os.ModeSymlink == os.ModeSymlink {
 			continue
 		}
-		//fiName2Time, err := fileutil.ParseTimeFromFileName(common.TimeFormat, fi.Name(), rl.clock.Now())
-		//if err != nil {
-		//	continue
-		//}
-		if fi.Name() != rl.curFn {
+		fiName2Time, err := fileutil.ParseTimeFromFileName(common.TimeFormat, fi.Name(), rl.clock.Now())
+		if err != nil {
+			continue
+		}
+		if fi.Name() != rl.currentFileName && !timeutil.IsToday(fiName2Time, rl.clock.Now()) {
 			files = append(files, fi.Name())
 		}
 	}
