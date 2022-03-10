@@ -48,7 +48,7 @@ func GenerateFn(pattern *strftime.Strftime, clock interface{ Now() time.Time }, 
 }
 
 //产生新的文件名（用于按大小分割文件）
-func GenerateFileNme(path string, name string, suffix string, clock interface{ Now() time.Time }, timeFormat string) (string, string) {
+func GenerateFileNme(path string, name string, clock interface{ Now() time.Time }, timeFormat string) (string, string) {
 	now := clock.Now()
 
 	var base time.Time
@@ -60,7 +60,7 @@ func GenerateFileNme(path string, name string, suffix string, clock interface{ N
 
 	//拼接文件名
 	date := fmt.Sprintf("%s", base.Format(timeFormat))
-	fileName := fmt.Sprintf("%s-%s%s", name, date, suffix)
+	fileName := fmt.Sprintf("%s-%s", name, date)
 	fileNameWhitPath := fmt.Sprintf("%s%s", path, fileName)
 	return fileNameWhitPath, fileName
 }
@@ -235,7 +235,7 @@ func GetNewFileName(filePath string, fileName string, rotationSize int64, clock 
 	index := 1
 	newFileName := ""
 	newFileNameWithPath := common.IsNull
-	newFileNameWithPath, newFileName = GenerateFileNme(filePath, fileName, common.FileSuffix, clock, common.TimeFormat)
+	newFileNameWithPath, newFileName = GenerateFileNme(filePath, fileName, clock, common.TimeFormat)
 	fileInfo, err := os.Stat(newFileNameWithPath)
 	if err != nil {
 		//文件不存在且该文件的压缩文件也不存在：创建新的文件
@@ -255,9 +255,9 @@ func GetNewFileName(filePath string, fileName string, rotationSize int64, clock 
 		}
 	}
 	for {
-		newFileNameWithPath, newFileName = GenerateFileNme(filePath, fileName, common.FileSuffix, clock, common.TimeFormat)
-		newFileNameWithPath = fmt.Sprintf("%s.%d", newFileNameWithPath, index)
-		newFileName = fmt.Sprintf("%s.%d", newFileName, index)
+		newFileNameWithPath, newFileName = GenerateFileNme(filePath, fileName, clock, common.TimeFormat)
+		newFileNameWithPath = fmt.Sprintf("%s.%d%s", newFileNameWithPath, index, common.FileSuffix)
+		newFileName = fmt.Sprintf("%s.%d%s", newFileName, index, common.FileSuffix)
 		index++
 		fileInfo, err := os.Stat(newFileNameWithPath)
 		if err != nil {
