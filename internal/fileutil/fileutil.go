@@ -248,9 +248,12 @@ func GetNewFileName(filePath string, fileName string, rotationSize int64, clock 
 		}
 	}
 	//文件存在：不按照大小划分
-	//if rotationSize <= 0 {
-	//	return newFileNameWithPath, newFileName
-	//}
+	if rotationSize <= 0 {
+		//不存在压缩文件时，直接把数据写到这个文件中
+		if _, err := os.Stat(newFileNameWithPath + common.CompressSuffix); err != nil {
+			return newFileNameWithPath, newFileName
+		}
+	}
 	//文件存在：需要按照大小划分
 	if rotationSize > 0 {
 		//仅当文件存在时，判断文件大小是否满足大小限制。
