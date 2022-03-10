@@ -199,6 +199,10 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 	}
 
 	rl.outFh.Close()
+	//压缩旧文件
+	go func() {
+		rl.compressLogFiles()
+	}()
 	rl.outFh = fh
 	rl.curFn = filename
 	rl.generation = generation
