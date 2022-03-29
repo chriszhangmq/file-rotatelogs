@@ -84,7 +84,7 @@ func New(options ...Option) (*RotateLogs, error) {
 		return nil, errors.New("The log file path or file name is missing")
 	}
 
-	p := filePath + fileName + "-" + common.TimeFormat
+	p := filePath + fileName
 	globLogPattern := p
 	for _, re := range patternConversionRegexps {
 		globLogPattern = re.ReplaceAllString(globLogPattern, "*")
