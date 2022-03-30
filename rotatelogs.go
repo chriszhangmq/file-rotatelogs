@@ -75,6 +75,7 @@ func New(options ...Option) (*RotateLogs, error) {
 		case optkeyCronTime:
 			cronTime = o.Value().(string)
 		case optkeyLinkName:
+			//配置软链接名
 			if o.Value().(bool) {
 				linkName = filePath + fileName + common.Symlink + common.FileSuffix
 			}
